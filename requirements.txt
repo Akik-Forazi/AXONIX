@@ -1,0 +1,10 @@
+# DevNet dependencies
+# Only one required runtime dependency:
+ollama
+
+# Optional — for code tools
+# flake8
+# black
+
+# Optional — for building the .exe
+# pyinstaller

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devnet"
+version = "2.0.0"
+description = "Fully Local Super Agentic AI — Ollama powered"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "ollama",
+]
+
+[project.optional-dependencies]
+dev = ["flake8", "black", "pytest", "pyinstaller"]
+
+[project.scripts]
+devnet = "devnet.core.runner:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["devnet*"]
