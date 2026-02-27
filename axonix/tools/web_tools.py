@@ -10,7 +10,7 @@ import re
 
 class WebTools:
     HEADERS = {
-        "User-Agent": "Mozilla/5.0 (DevNet Agent/1.0)",
+        "User-Agent": "Mozilla/5.0 (axonix Agent/1.0)",
     }
 
     def get(self, url: str, max_chars: int = 8000) -> str:

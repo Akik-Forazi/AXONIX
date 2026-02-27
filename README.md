@@ -1,4 +1,4 @@
-# DevNet — Fully Local Super Agentic AI
+# axonix — Fully Local Super Agentic AI
 
 ```
   ██████╗ ███████╗██╗   ██╗███╗   ██╗███████╗████████╗
@@ -36,7 +36,7 @@ llama-server.exe -m your_model.gguf --port 8080 --ctx-size 4096 -ngl 99
 
 The server exposes `http://localhost:8080` with OpenAI-compatible `/v1/chat/completions`.
 
-### Step 3 — Install DevNet
+### Step 3 — Install axonix
 
 ```bash
 cd C:\Users\akikf\programing\nn
@@ -49,19 +49,19 @@ python -m pip install -e .
 
 | Command | Description |
 |---------|-------------|
-| `devnet run --lc` | Interactive local CLI loop (agent mode) |
-| `devnet run --lc --w` | Interactive CLI **+ web UI** at localhost:7860 |
-| `devnet run --lc -w --port 8888` | Custom web port |
-| `devnet run --cli` | One-shot stdin mode |
-| `devnet run agent "your task"` | Run agent on a specific task |
-| `devnet web` | Start web UI only |
+| `axonix run --lc` | Interactive local CLI loop (agent mode) |
+| `axonix run --lc --w` | Interactive CLI **+ web UI** at localhost:7860 |
+| `axonix run --lc -w --port 8888` | Custom web port |
+| `axonix run --cli` | One-shot stdin mode |
+| `axonix run agent "your task"` | Run agent on a specific task |
+| `axonix web` | Start web UI only |
 
 ---
 
 ## 🌐 Web UI (`--w` flag)
 
 ```bash
-devnet run --lc --w
+axonix run --lc --w
 ```
 
 Opens a beautiful dark-themed chat interface at **http://localhost:7860** with:
@@ -102,20 +102,20 @@ Opens a beautiful dark-themed chat interface at **http://localhost:7860** with:
 ## ⚙️ Configuration
 
 ```bash
-devnet config show
-devnet config set --url http://localhost:8080
-devnet config set --model llama3-8b
-devnet config set --steps 50 --temp 0.5 --tokens 4096
-devnet config reset
+axonix config show
+axonix config set --url http://localhost:8080
+axonix config set --model llama3-8b
+axonix config set --steps 50 --temp 0.5 --tokens 4096
+axonix config reset
 ```
 
-Config is saved to `~/.devnet_config.json`.
+Config is saved to `~/.axonix_config.json`.
 
 ### Per-run overrides
 
 ```bash
-devnet run --lc --w --url http://localhost:8080 --steps 40 --temp 0.3
-devnet run agent "fix main.py" --workspace ./myproject --tokens 4096
+axonix run --lc --w --url http://localhost:8080 --steps 40 --temp 0.3
+axonix run agent "fix main.py" --workspace ./myproject --tokens 4096
 ```
 
 ---
@@ -123,7 +123,7 @@ devnet run agent "fix main.py" --workspace ./myproject --tokens 4096
 ## 🐍 Python API
 
 ```python
-from devnet import Agent
+from axonix import Agent
 
 agent = Agent(
     base_url="http://localhost:8080",   # your llama.cpp server
@@ -150,7 +150,7 @@ for token in agent.chat_stream("Explain llama.cpp in simple terms"):
 
 ```
 nn/
-├── devnet/
+├── axonix/
 │   ├── __init__.py
 │   ├── core/
 │   │   ├── agent.py          # Agent loop + tool calling
@@ -179,12 +179,12 @@ nn/
 ## 💡 Example Tasks
 
 ```bash
-devnet run agent "Read all Python files and summarize what this project does"
-devnet run agent "Create a complete Flask REST API with SQLite database"
-devnet run agent "Search the web for best GGUF models under 8B parameters"
-devnet run agent "Find all TODO comments in the codebase and create a todo.md"
-devnet run agent "Write unit tests for every function in utils.py"
-devnet run agent "Refactor this code to use dataclasses"
+axonix run agent "Read all Python files and summarize what this project does"
+axonix run agent "Create a complete Flask REST API with SQLite database"
+axonix run agent "Search the web for best GGUF models under 8B parameters"
+axonix run agent "Find all TODO comments in the codebase and create a todo.md"
+axonix run agent "Write unit tests for every function in utils.py"
+axonix run agent "Refactor this code to use dataclasses"
 ```
 
 ---

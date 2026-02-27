@@ -58,7 +58,7 @@ class CodeTools:
                 return
 
             # Filter common noise
-            ignore = {".git", "__pycache__", "node_modules", ".venv", "venv", ".devnet_memory.json"}
+            ignore = {".git", "__pycache__", "node_modules", ".venv", "venv", ".axonix_memory.json"}
             items = [i for i in items if i not in ignore]
 
             for i, item in enumerate(items):

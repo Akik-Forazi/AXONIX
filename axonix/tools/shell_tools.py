@@ -77,7 +77,7 @@ class ShellTools:
         err_buf = io.StringIO()
         try:
             with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
-                exec(compile(code, "<devnet>", "exec"), {})
+                exec(compile(code, "<axonix>", "exec"), {})
             out = out_buf.getvalue()
             err = err_buf.getvalue()
             parts = [f"[PYTHON] Executed {len(code)} chars"]

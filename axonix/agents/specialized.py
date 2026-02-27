@@ -2,7 +2,7 @@
 Specialized Agents - Pre-built agents for specific tasks
 """
 
-from devnet.core.agent import Agent
+from axonix.core.agent import Agent
 
 
 class CoderAgent(Agent):

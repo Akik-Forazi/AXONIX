@@ -1,5 +1,5 @@
 """
-DevNet Loop Engine — Moltbot-style continuous execution
+axonix Loop Engine — Moltbot-style continuous execution
 Keeps running sub-tasks autonomously until a goal is verified complete.
 
 How it works:
@@ -17,12 +17,12 @@ import json
 import re
 import time
 from typing import Callable, Optional
-from devnet.core.agent import Agent
-from devnet.core.cli import C, rule, Spinner
+from axonix.core.agent import Agent
+from axonix.core.cli import C, rule, Spinner
 
 
 # ── Goal-level system prompt ───────────────────────────────
-PLANNER_PROMPT = """You are DevNet Planner, the strategic mind of a fully local AI dev agent.
+PLANNER_PROMPT = """You are axonix Planner, the strategic mind of a fully local AI dev agent.
 
 Your job: given a high-level GOAL, produce a concrete ordered plan of sub-tasks.
 
@@ -42,7 +42,7 @@ Rules:
 - Output ONLY the JSON array, no explanation
 """
 
-VERIFIER_PROMPT = """You are DevNet Verifier. Your job is to check if a task was completed successfully.
+VERIFIER_PROMPT = """You are axonix Verifier. Your job is to check if a task was completed successfully.
 
 You will be given:
 - The task description
@@ -55,7 +55,7 @@ or
 {"success": false, "reason": "what went wrong", "fix_hint": "how to fix it"}
 """
 
-REPLANNER_PROMPT = """You are DevNet Replanner. The current plan has stalled or partially failed.
+REPLANNER_PROMPT = """You are axonix Replanner. The current plan has stalled or partially failed.
 
 Given:
 - The original GOAL
@@ -255,8 +255,8 @@ class LoopEngine:
         )
 
         # Override max_steps for sub-tasks
-        original_steps = self.agent.max_steps
-        self.agent.max_steps = self.max_steps_per_task
+        original_steps = self.agent.config.get("max_steps", 30)
+        self.agent.config["max_steps"] = self.max_steps_per_task
 
         evidence_parts = []
 
@@ -269,7 +269,7 @@ class LoopEngine:
         self.agent.on_tool_result = capture_result
 
         result = self.agent.run(prompt)
-        self.agent.max_steps = original_steps
+        self.agent.config["max_steps"] = original_steps
         self.agent.on_tool_result = orig_tool_result
 
         evidence_parts.append(f"[final_result]: {result}")

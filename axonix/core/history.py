@@ -1,5 +1,5 @@
 """
-DevNet History — JSONL persistence for chats
+axonix History — JSONL persistence for chats
 """
 
 import json
@@ -8,7 +8,7 @@ from datetime import datetime
 
 class ChatHistory:
     def __init__(self, workspace: str):
-        self.log_dir = os.path.join(workspace, ".devnet", "history")
+        self.log_dir = os.path.join(workspace, ".axonix", "history")
         os.makedirs(self.log_dir, exist_ok=True)
         self.current_file = os.path.join(self.log_dir, f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl")
 
@@ -21,7 +21,7 @@ class ChatHistory:
             **kwargs
         }
         with open(self.current_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + " ")
+            f.write(json.dumps(entry) + "\n")
 
     def get_sessions(self) -> list[str]:
         """List all history files."""

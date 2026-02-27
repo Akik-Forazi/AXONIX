@@ -1,20 +1,20 @@
 @echo off
-:: install.bat — Copies devnet.exe to %USERPROFILE%\.devnet\bin\ and adds to user PATH
+:: install.bat — Copies axonix.exe to %USERPROFILE%\.axonix\bin\ and adds to user PATH
 :: Uses PowerShell to safely read/write PATH — will never wipe existing entries.
 setlocal
 
-set "INSTALL_DIR=%USERPROFILE%\.devnet\bin"
-set "EXE_SRC=%~dp0dist\devnet.exe"
+set "INSTALL_DIR=%USERPROFILE%\.axonix\bin"
+set "EXE_SRC=%~dp0dist\axonix.exe"
 
 echo.
 echo  ============================================================
-echo   DevNet Installer
+echo   Axonix Installer
 echo  ============================================================
 echo.
 
 :: ── Check exe exists ──────────────────────────────────────
 if not exist "%EXE_SRC%" (
-    echo   ERROR: dist\devnet.exe not found.
+    echo   ERROR: dist\axonix.exe not found.
     echo   Run build.bat first!
     echo.
     pause
@@ -28,8 +28,8 @@ if not exist "%INSTALL_DIR%" (
 )
 
 :: ── Copy exe ──────────────────────────────────────────────
-copy /Y "%EXE_SRC%" "%INSTALL_DIR%\devnet.exe" >nul
-echo   Installed: %INSTALL_DIR%\devnet.exe
+copy /Y "%EXE_SRC%" "%INSTALL_DIR%\axonix.exe" >nul
+echo   Installed: %INSTALL_DIR%\axonix.exe
 
 :: ── Add to user PATH safely via PowerShell ────────────────
 echo.
@@ -61,16 +61,15 @@ if errorlevel 1 (
 :: ── Done ─────────────────────────────────────────────────
 echo.
 echo  ============================================================
-echo   devnet.exe installed successfully!
+echo   axonix.exe installed successfully!
 echo  ============================================================
 echo.
-echo   Before running DevNet, make sure Ollama is set up:
+echo   Before running Axonix, make sure Ollama is set up (optional):
 echo.
 echo     1. Install Ollama:   https://ollama.com/download
 echo     2. Start Ollama:     ollama serve
-echo     3. Import models:    devnet setup
-echo     4. Run DevNet:       devnet run --lc
+echo     3. Run Axonix:       axonix
 echo.
-echo   Open a NEW terminal window, then run: devnet
+echo   Open a NEW terminal window, then run: axonix
 echo.
 pause

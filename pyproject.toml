@@ -3,21 +3,22 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "devnet"
-version = "2.0.0"
-description = "Fully Local Super Agentic AI — Ollama powered"
+name = "axonix"
+version = "1.0.0"
+description = "Axonix — Fully Local Super Agentic AI"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "ollama",
+    "llama-cpp-python",
 ]
 
 [project.optional-dependencies]
 dev = ["flake8", "black", "pytest", "pyinstaller"]
 
 [project.scripts]
-devnet = "devnet.core.runner:main"
+axonix = "axonix.core.runner:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["devnet*"]
+include = ["axonix*"]

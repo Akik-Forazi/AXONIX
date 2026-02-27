@@ -1,23 +1,24 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="devnet",
-    version="2.0.0",
-    description="Fully Local Super Agentic AI — Ollama powered",
+    name="axonix",
+    version="1.0.0",
+    description="Axonix — Fully Local Super Agentic AI",
     packages=find_packages(),
     package_data={
-        "devnet": ["web/static/*.html"],
+        "axonix": ["web/static/*.html"],
     },
     install_requires=[
         "ollama",
+        "llama-cpp-python",
     ],
     extras_require={
         "dev": ["flake8", "black", "pytest", "pyinstaller"],
     },
     entry_points={
         "console_scripts": [
-            "devnet=devnet.core.runner:main",
+            "axonix=axonix.core.runner:main",
         ],
     },
-    python_requires=">=3.9",
+    python_requires=">=3.10",
 )

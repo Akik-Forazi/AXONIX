@@ -1,5 +1,5 @@
 @echo off
-:: DevNet Build Script — builds devnet.exe (Ollama backend)
+:: Axonix Build Script — builds axonix.exe
 :: Run from: C:\Users\akikf\programing\nn\
 :: Usage: build.bat
 setlocal enabledelayedexpansion
@@ -10,7 +10,7 @@ set PROJECT=C:\Users\akikf\programing\nn
 
 echo.
 echo  ========================================
-echo   DevNet Build  ^(Ollama edition^)
+echo   Axonix Build
 echo  ========================================
 echo.
 
@@ -33,23 +33,23 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Install ollama Python client (only runtime dep)
-%PIP% install ollama --quiet
+:: Install runtime deps
+%PIP% install ollama llama-cpp-python --quiet
 
-:: ── Step 3: Install devnet package in editable mode ──────
+:: ── Step 3: Install axonix package in editable mode ──────
 echo.
-echo  [3/4] Installing DevNet package...
+echo  [3/4] Installing Axonix package...
 cd /d %PROJECT%
 %PIP% install -e . --quiet
 if errorlevel 1 (
-    echo  ERROR: Failed to install devnet package.
+    echo  ERROR: Failed to install axonix package.
     pause
     exit /b 1
 )
 
 :: ── Step 4: Build .exe ───────────────────────────────────
 echo.
-echo  [4/4] Building devnet.exe...
+echo  [4/4] Building axonix.exe...
 cd /d %PROJECT%
 %PY% build.py
 
@@ -66,8 +66,8 @@ echo  ========================================
 echo   BUILD COMPLETE
 echo  ========================================
 echo.
-echo  Executable: %PROJECT%\dist\devnet.exe
+echo  Executable: %PROJECT%\dist\axonix.exe
 echo.
-echo  Next: run install.bat to add devnet to your PATH.
+echo  Next: run install.bat to add axonix to your PATH.
 echo.
 pause

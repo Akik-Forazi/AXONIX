@@ -1,5 +1,5 @@
 """
-DevNet Web Server - Ollama edition.
+Axonix Web Server - Multi-provider engine.
 SSE streaming for chat and agent modes.
 Tool call/result events emitted live during agent loop.
 """
@@ -12,8 +12,8 @@ import os
 import traceback
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-from devnet.core.agent import Agent
-from devnet.core.config import load_config, save_config, DEVNET_HOME, MODELS_DIR, model_dir
+from axonix.core.agent import Agent
+from axonix.core.config import load_config, save_config, AXONIX_HOME, MODELS_DIR, model_dir
 
 
 def get_html():
@@ -22,7 +22,7 @@ def get_html():
         with open(p, "r", encoding="utf-8") as f:
             return f.read()
     except Exception:
-        return "<h1>DevNet — index.html missing</h1>"
+        return "<h1>Axonix — index.html missing</h1>"
 
 
 class _QuietServer(ThreadingHTTPServer):
@@ -32,10 +32,10 @@ class _QuietServer(ThreadingHTTPServer):
         exc = __import__("sys").exc_info()[1]
         if isinstance(exc, (BrokenPipeError, ConnectionAbortedError, ConnectionResetError, OSError)):
             return
-        print(f"[DevNet Web] {client_address}: {exc}")
+        print(f"[Axonix Web] {client_address}: {exc}")
 
 
-class DevNetHandler(BaseHTTPRequestHandler):
+class AxonixHandler(BaseHTTPRequestHandler):
     agent: Agent = None
 
     def log_message(self, *_):
@@ -123,7 +123,7 @@ class DevNetHandler(BaseHTTPRequestHandler):
 
         if path == "/api/config":
             cfg = load_config()
-            cfg["_home"]       = DEVNET_HOME
+            cfg["_home"]       = AXONIX_HOME
             cfg["_models_dir"] = MODELS_DIR
             return self._json(cfg)
 
@@ -140,8 +140,9 @@ class DevNetHandler(BaseHTTPRequestHandler):
             return self._json({"sessions": self.agent.history.get_sessions()})
 
         if path == "/api/models":
-            from devnet.core.models import all_models
-            from devnet.core.backend import ollama_model_exists
+            from axonix.core.models import all_models
+            # Local/Ollama check
+            from axonix.core.backend import ollama_model_exists
             cfg    = load_config()
             active = cfg.get("model_name", "")
             out = []
@@ -252,7 +253,7 @@ class DevNetHandler(BaseHTTPRequestHandler):
 
         if path == "/api/config/save":
             cfg     = load_config()
-            allowed = {"base_url", "model_name", "max_steps", "max_tokens", "temperature", "workspace"}
+            allowed = {"base_url", "model_name", "max_steps", "max_tokens", "temperature", "workspace", "provider", "model_path"}
             for k, v in body.items():
                 if k in allowed:
                     cfg[k] = v
@@ -274,7 +275,7 @@ class DevNetHandler(BaseHTTPRequestHandler):
             return self._json({"ok": ok, "msg": result})
 
         if path == "/api/setup":
-            from devnet.core.first_run import run_setup
+            from axonix.core.first_run import run_setup
             imported = run_setup(silent=True)
             return self._json({"imported": imported})
 
@@ -291,12 +292,11 @@ class DevNetHandler(BaseHTTPRequestHandler):
 
     def _agent_sse(self, message):
         """
-        Agent loop. Runs agent.run() in current thread.
-        Hooks emit SSE events live as they happen.
+        Agent loop with streaming parser.
+        Emits: token, thought, step, tool_call, tool_result, done, error
         """
-        steps     = [0]
-        tcs       = []
-        result_box = [None]
+        steps = [0]
+        tcs   = []
 
         def on_step(s, total):
             steps[0] = s
@@ -305,13 +305,15 @@ class DevNetHandler(BaseHTTPRequestHandler):
         def on_token(token):
             self._sse({"type": "token", "token": token})
 
+        def on_thought(content):
+            self._sse({"type": "thought", "content": content})
+
         def on_tool_call(name, args):
             tcs.append({"tool": name, "args": args})
             self._sse({"type": "tool_call", "tool": name, "args": args})
 
         def on_tool_result(name, result):
             result_s = str(result)[:2000]
-            # Mark last unresolved call for this tool
             for tc in reversed(tcs):
                 if tc["tool"] == name and "result" not in tc:
                     tc["result"] = result_s
@@ -320,6 +322,7 @@ class DevNetHandler(BaseHTTPRequestHandler):
 
         self.agent.on_step        = on_step
         self.agent.on_token       = on_token
+        self.agent.on_thought     = on_thought
         self.agent.on_tool_call   = on_tool_call
         self.agent.on_tool_result = on_tool_result
 
@@ -343,12 +346,12 @@ class WebServer:
         self.agent = agent
         self.host  = host
         self.port  = port
-        DevNetHandler.agent = agent
+        AxonixHandler.agent = agent
 
     def start(self, open_browser=True):
-        server = _QuietServer((self.host, self.port), DevNetHandler)
+        server = _QuietServer((self.host, self.port), AxonixHandler)
         url    = f"http://{self.host}:{self.port}"
-        print(f"\n\033[96m[DevNet Web]\033[0m → \033[92m{url}\033[0m  (Ctrl+C to stop)\n")
+        print(f"\n\033[96m[Axonix Web]\033[0m → \033[92m{url}\033[0m  (Ctrl+C to stop)\n")
         if open_browser:
             threading.Thread(
                 target=lambda: (time.sleep(0.9), webbrowser.open(url)),

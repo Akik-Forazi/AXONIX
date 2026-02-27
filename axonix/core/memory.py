@@ -1,11 +1,11 @@
 """
 Memory - Persistent key-value store for the agent
-Stored at ~/.devnet/memory.json
+Stored at ~/.axonix/memory.json
 """
 
 import json
 import os
-from devnet.core.config import MEMORY_PATH
+from axonix.core.config import MEMORY_PATH
 
 
 class Memory:

@@ -1,7 +1,7 @@
 """
-DevNet Model Registry
+axonix Model Registry
 All recommended GGUF models for your device (i5-8350U, 16GB RAM, CPU-only)
-Switch models with: devnet model use <name>
+Switch models with: axonix model use <name>
 """
 
 from dataclasses import dataclass, field
@@ -71,7 +71,7 @@ REGISTRY: dict[str, ModelVariant] = {
         max_tokens=4096,
         tags=["coding", "best", "fast", "agentic"],
         description="Qwen2.5-Coder 7B Instruct Q6_K — state-of-the-art 7B coder, superior quality",
-        best_for="Python, JS, HTML, SQL, shell scripts, code review, debugging, DevNet agent tasks",
+        best_for="Python, JS, HTML, SQL, shell scripts, code review, debugging, axonix agent tasks",
         speed_toks="3–5 tok/s",
     ),
 
@@ -258,7 +258,7 @@ def all_models() -> list[ModelVariant]:
 
 def show_table():
     """Print a formatted table of all models."""
-    from devnet.core.cli import C
+    from axonix.core.cli import C
     rows = []
     for m in REGISTRY.values():
         rec = " ★" if m.recommended else ""
@@ -290,4 +290,4 @@ def show_table():
             colored.append(f"{color}{cell:<{w}}{C.RESET}")
         print("  " + "  ".join(colored))
     print(sep)
-    print(f"  {C.DGRAY}★ = recommended  ·  use: devnet model use <name>{C.RESET}\n")
+    print(f"  {C.DGRAY}★ = recommended  ·  use: axonix model use <name>{C.RESET}\n")

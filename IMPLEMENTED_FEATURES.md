@@ -1,6 +1,6 @@
-# DevNet Implemented Features Summary
+# axonix Implemented Features Summary
 
-This document outlines the key features implemented to transform DevNet into a seamless, fast, and feature-rich local AI development environment, addressing the user's requirements for a "premium, all-in-one local AI development environment" and a "powerful, autonomous engineer controlled via a feature-rich, customizable web dashboard."
+This document outlines the key features implemented to transform axonix into a seamless, fast, and feature-rich local AI development environment, addressing the user's requirements for a "premium, all-in-one local AI development environment" and a "powerful, autonomous engineer controlled via a feature-rich, customizable web dashboard."
 
 ## Core Agent & Backend Enhancements
 
@@ -13,11 +13,11 @@ This document outlines the key features implemented to transform DevNet into a s
     *   **Model Downloader**: Implemented a background model downloader. Users can now download GGUF models directly from HuggingFace via the Web UI's Model Manager.
     *   **Real-time Download Progress**: Download status and progress are tracked and displayed in the UI.
     *   **Dynamic Context Size**: Users can adjust `n_ctx` (context window size) and `n_gpu_layers` directly from the settings panel, with changes dynamically applied to the loaded model via a new API endpoint (`/api/config/update_model_params`).
-    *   **Improved Model Discovery**: The system now correctly detects and utilizes local GGUF models stored in the `~/.devnet/models` directory, and the model registry has been updated to reflect user's local model versions.
+    *   **Improved Model Discovery**: The system now correctly detects and utilizes local GGUF models stored in the `~/.axonix/models` directory, and the model registry has been updated to reflect user's local model versions.
 
 *   **Chat & History**:
     *   **Real-time Token Streaming**: The agent's thought process and responses are streamed token-by-token to the UI, providing immediate feedback and a more interactive experience.
-    *   **JSONL Chat Persistence**: All chat interactions (user messages, assistant responses, tool calls, and results) are automatically saved as JSONL files in the workspace's `.devnet/history` folder.
+    *   **JSONL Chat Persistence**: All chat interactions (user messages, assistant responses, tool calls, and results) are automatically saved as JSONL files in the workspace's `.axonix/history` folder.
     *   **Session History Viewer**: A new "HISTORY" tab in the sidebar allows users to browse and view previous chat sessions.
 
 ## Web Dashboard (IDE-like Experience)
@@ -34,8 +34,8 @@ This document outlines the key features implemented to transform DevNet into a s
 
 ## Development & Build
 
-*   **PyInstaller Build Integration**: The `build.bat` script is configured to use `PyInstaller` and the `devnet.spec` file to create a standalone `devnet.exe` executable.
-*   **Module Inclusion**: The `devnet.spec` has been updated to explicitly include newly added modules (`history`, `downloader`, `ollama`) and `llama_cpp` for a robust executable build.
+*   **PyInstaller Build Integration**: The `build.bat` script is configured to use `PyInstaller` and the `axonix.spec` file to create a standalone `axonix.exe` executable.
+*   **Module Inclusion**: The `axonix.spec` has been updated to explicitly include newly added modules (`history`, `downloader`, `ollama`) and `llama_cpp` for a robust executable build.
 
 ---
 **Status: 90% Complete**

@@ -1,15 +1,15 @@
 """
-DevNet Config
+Axonix Config
 """
 
 import json
 import os
 
-DEVNET_HOME = os.path.expanduser("~/.devnet")
-MODELS_DIR  = os.path.join(DEVNET_HOME, "models")
-CONFIG_PATH = os.path.join(DEVNET_HOME, "config.json")
-MEMORY_PATH = os.path.join(DEVNET_HOME, "memory.json")
-HISTORY_DIR = os.path.join(DEVNET_HOME, "history")
+AXONIX_HOME = os.path.expanduser("~/.axonix")
+MODELS_DIR  = os.path.join(AXONIX_HOME, "models")
+CONFIG_PATH = os.path.join(AXONIX_HOME, "config.json")
+MEMORY_PATH = os.path.join(AXONIX_HOME, "memory.json")
+HISTORY_DIR = os.path.join(AXONIX_HOME, "history")
 
 os.makedirs(MODELS_DIR,  exist_ok=True)
 os.makedirs(HISTORY_DIR, exist_ok=True)
@@ -47,7 +47,7 @@ def save_config(cfg: dict):
 
 def show_config():
     cfg = load_config()
-    print("\n\033[96m[DevNet Config]\033[0m")
+    print("\n\033[96m[Axonix Config]\033[0m")
     for k, v in cfg.items():
         print(f"  \033[90m{k:<18}\033[0m {v}")
     print(f"\n  File: {CONFIG_PATH}\n")
@@ -64,4 +64,4 @@ def set_config(**kwargs):
 
 def reset_config():
     save_config(DEFAULTS)
-    print("\033[93m[Config] Reset to defaults.\033[0m")
+    print("\033[93m[Axonix Config] Reset to defaults.\033[0m")

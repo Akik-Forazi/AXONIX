@@ -1,10 +1,3 @@
-# DevNet dependencies
-# Only one required runtime dependency:
+# Axonix dependencies
 ollama
-
-# Optional — for code tools
-# flake8
-# black
-
-# Optional — for building the .exe
-# pyinstaller
+llama-cpp-python

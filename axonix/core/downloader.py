@@ -1,5 +1,5 @@
 """
-DevNet Downloader — Background GGUF downloader
+axonix Downloader — Background GGUF downloader
 """
 
 import os
@@ -31,7 +31,7 @@ class ModelDownloader:
 
     def _run(self, url: str, dest_path: str):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "DevNet-Downloader/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "axonix-Downloader/1.0"})
             with urllib.request.urlopen(req) as resp:
                 total = int(resp.headers.get('content-length', 0))
                 self.downloads[url]["total_size"] = total

@@ -1,7 +1,7 @@
 """
-DevNet First-Run Setup
-Auto-imports all GGUFs from ~/.devnet/models/ into Ollama.
-Runs silently on first launch, or manually via: devnet setup
+axonix First-Run Setup
+Auto-imports all GGUFs from ~/.axonix/models/ into Ollama.
+Runs silently on first launch, or manually via: axonix setup
 """
 
 import os
@@ -9,8 +9,8 @@ import sys
 import json
 import subprocess
 import urllib.request
-from devnet.core.config import MODELS_DIR, DEVNET_HOME, load_config, save_config
-from devnet.core.cli import C, rule, Spinner
+from axonix.core.config import MODELS_DIR, AXONIX_HOME, load_config, save_config
+from axonix.core.cli import C, rule, Spinner
 
 
 # ── Modelfile template ─────────────────────────────────────
@@ -69,7 +69,7 @@ def _ollama_model_exists(name: str) -> bool:
 
 def _create_modelfile(gguf_path: str, template: str, folder_name: str) -> str:
     """Write a Modelfile and return its path."""
-    modelfile_path = os.path.join(DEVNET_HOME, f"Modelfile.{folder_name}")
+    modelfile_path = os.path.join(AXONIX_HOME, f"Modelfile.{folder_name}")
     content = f'FROM "{gguf_path}"\n'
     with open(modelfile_path, "w") as f:
         f.write(content)
@@ -115,7 +115,7 @@ def _import_model(folder_name: str, gguf_path: str) -> bool:
 
 def scan_local_models() -> list[dict]:
     """
-    Scan ~/.devnet/models/ and return a list of
+    Scan ~/.axonix/models/ and return a list of
     {name, gguf_path} dicts for models that have a GGUF file.
     """
     found = []
@@ -134,7 +134,7 @@ def scan_local_models() -> list[dict]:
 def run_setup(force: bool = False, silent: bool = False) -> list[str]:
     """
     Main setup entry point.
-    Scans ~/.devnet/models/, imports any un-registered GGUFs into Ollama.
+    Scans ~/.axonix/models/, imports any un-registered GGUFs into Ollama.
     Returns list of successfully imported model names.
 
     Args:
@@ -159,7 +159,7 @@ def run_setup(force: bool = False, silent: bool = False) -> list[str]:
         log(f"  {C.YELLOW}No GGUF models found in {MODELS_DIR}{C.RESET}")
         return []
 
-    log(f"\n  {C.BOLD}{C.WHITE}DevNet Setup{C.RESET}  {C.DGRAY}— importing models into Ollama{C.RESET}")
+    log(f"\n  {C.BOLD}{C.WHITE}axonix Setup{C.RESET}  {C.DGRAY}— importing models into Ollama{C.RESET}")
     log(f"  {C.DGRAY}Found {len(models)} model(s) in {MODELS_DIR}{C.RESET}\n")
 
     imported = []
@@ -212,7 +212,7 @@ def run_setup(force: bool = False, silent: bool = False) -> list[str]:
 def ensure_setup_done() -> bool:
     """
     Called on every launch.
-    If Ollama has no DevNet models registered at all, runs setup silently.
+    If Ollama has no axonix models registered at all, runs setup silently.
     Returns True if at least one model is available.
     """
     if not _ollama_running():

@@ -1,5 +1,5 @@
 """
-DevNet CLI — Claude Code / Gemini CLI style terminal experience
+axonix CLI — Claude Code / Gemini CLI style terminal experience
 Rich, interactive, with live spinner, panels, syntax hints
 Pure stdlib + optional 'rich' library for premium output
 """
@@ -221,7 +221,7 @@ def print_help():
         ("config",         "show current configuration"),
         ("tree",           "show workspace file tree"),
         ("!<cmd>",         "run a shell command directly"),
-        ("exit",           "quit DevNet"),
+        ("exit",           "quit axonix"),
     ]
     for cmd, desc in cmds:
         if not cmd:
@@ -401,12 +401,12 @@ class CLI:
     def _run_goal(self, goal: str):
         """Moltbot-style continuous loop until goal achieved."""
         print(f"\n  {C.BLUE}◆{C.RESET} {C.BOLD}{C.WHITE}Goal Mode{C.RESET} {C.DGRAY}— continuous until target reached{C.RESET}\n")
-        from devnet.core.loop import LoopEngine
+        from axonix.core.loop import LoopEngine
         engine = LoopEngine(
             agent=self.agent,
             max_cycles=5,
             max_retries=3,
-            max_steps_per_task=self.agent.max_steps,
+            max_steps_per_task=self.agent.config.get("max_steps", 30),
             verbose=True,
         )
         result = engine.run_goal(goal)
@@ -454,7 +454,7 @@ class CLI:
                     print(f"  {C.PURPLE}◆ goal mode{C.RESET} {C.DGRAY}— continuous loop until target reached{C.RESET}")
 
                 elif low == 'models':
-                    from devnet.core.models import show_table
+                    from axonix.core.models import show_table
                     show_table()
 
                 elif low.startswith('model use '):
@@ -465,7 +465,7 @@ class CLI:
 
                 elif low.startswith('model info '):
                     name = text[len('model info '):].strip()
-                    from devnet.core.models import get as gm
+                    from axonix.core.models import get as gm
                     m = gm(name)
                     if m:
                         section(f"Model: {m.name}")
@@ -500,18 +500,19 @@ class CLI:
                     ok = h.get('status') == 'ok'
                     color = C.GREEN if ok else C.RED
                     icon  = '●' if ok else '○'
-                    model = h.get('model', self.agent.model_name)
-                    print(f"  {color}{icon}{C.RESET} Ollama {color}{h.get('status', '?')}{C.RESET}  {C.DGRAY}·{C.RESET} {C.GRAY}{model}{C.RESET}  {C.DGRAY}@{C.RESET} {C.GRAY}{self.agent.base_url}{C.RESET}")
+                    model = h.get('model', self.agent.config.get("model_name", "?"))
+                    base_url = self.agent.config.get("base_url", "localhost:11434")
+                    print(f"  {color}{icon}{C.RESET} Ollama {color}{h.get('status', '?')}{C.RESET}  {C.DGRAY}·{C.RESET} {C.GRAY}{model}{C.RESET}  {C.DGRAY}@{C.RESET} {C.GRAY}{base_url}{C.RESET}")
 
                 elif low == 'config':
-                    from devnet.core.config import load_config
+                    from axonix.core.config import load_config
                     cfg = load_config()
                     section("Configuration")
                     for k, v in cfg.items():
                         kv(k, str(v))
 
                 elif low == 'tree':
-                    from devnet.tools.code_tools import CodeTools
+                    from axonix.tools.code_tools import CodeTools
                     ct = CodeTools(self.agent.workspace)
                     tree_str = ct.tree(self.agent.workspace)
                     print()
@@ -521,7 +522,7 @@ class CLI:
                 elif low.startswith('!'):
                     # Shell passthrough
                     cmd = text[1:].strip()
-                    from devnet.tools.shell_tools import ShellTools
+                    from axonix.tools.shell_tools import ShellTools
                     st = ShellTools(self.agent.workspace)
                     result = st.run(cmd)
                     print()
