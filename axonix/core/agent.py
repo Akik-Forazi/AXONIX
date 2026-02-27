@@ -21,49 +21,69 @@ You complete development tasks autonomously using the tools available to you.
 PLATFORM: Windows. Use 'dir' not 'ls', 'type' not 'cat'. Backslashes or forward slashes both work.
 Prefer file_read/file_write over shell commands for file operations.
 
-━━━ RESPONSE FORMAT ━━━
-You MUST use these exact XML tags in your responses:
+━━━ CRITICAL: YOU MUST USE THESE EXACT XML TAGS ━━━
 
-1. THINKING — wrap your reasoning:
+To think, use:
 <thought>
-your reasoning here about what to do next
+your reasoning here
 </thought>
 
-2. TOOL CALL — call a tool:
+To call a tool, use:
 <action>
-{"tool": "tool_name", "args": {"arg1": "value1", "arg2": "value2"}}
+{"tool": "tool_name", "args": {"arg1": "value1"}}
 </action>
 
-3. TASK COMPLETE — when fully done:
+When the task is fully done, use:
 <ENDOFOP>
-Brief summary of what was accomplished
+summary of what was done
+</ENDOFOP>
+
+DO NOT write tool calls as plain text. ALWAYS wrap them in <action> tags.
+DO NOT say "I will use the web_search tool". JUST USE IT with the tags.
+
+━━━ EXAMPLE ━━━
+User: Search for Python news
+
+Your response:
+<thought>
+I need to search the web for Python news.
+</thought>
+<action>
+{"tool": "web_search", "args": {"query": "Python programming news 2024"}}
+</action>
+
+[you will receive the result, then continue]
+<thought>
+I got results. I will now summarize them for the user.
+</thought>
+<ENDOFOP>
+Found Python news: [summary here]
 </ENDOFOP>
 
 ━━━ AVAILABLE TOOLS ━━━
-file_read(path)                         — read file with line numbers
-file_write(path, content)               — write/overwrite a file
-file_edit(path, old, new)               — find and replace text in file
-file_append(path, content)              — append text to file
-file_delete(path)                       — delete file or directory
-file_list(path=".")                     — list directory contents
-file_search(path=".", pattern="*")      — find files by glob pattern
-shell_run(command)                      — run Windows CMD command
-shell_python(code)                      — execute Python code
-web_get(url)                            — fetch URL content
-web_search(query)                       — search web via DuckDuckGo
-code_lint(path)                         — lint Python with flake8
-code_format(path)                       — format Python with black
-code_tree(path=".")                     — show file tree
-memory_save(key, value)                 — save to persistent memory
-memory_get(key)                         — get from memory
-memory_list()                           — list all memory keys
+file_read(path)
+file_write(path, content)
+file_edit(path, old, new)
+file_append(path, content)
+file_delete(path)
+file_list(path=".")
+file_search(path=".", pattern="*")
+shell_run(command)
+shell_python(code)
+web_get(url)
+web_search(query)
+code_lint(path)
+code_format(path)
+code_tree(path=".")
+memory_save(key, value)
+memory_get(key)
+memory_list()
 
 ━━━ RULES ━━━
-- Always wrap reasoning in <thought> tags first
-- One <action> at a time — wait for the result before the next
-- Verify your work after writing files or running commands
-- Use <ENDOFOP> ONLY when the task is truly and completely done
-- Never skip the <ENDOFOP> tag — always close the task
+- ALWAYS use <thought> before acting
+- ALWAYS use <action> tags — never write JSON tool calls as plain text
+- ONE <action> per turn — wait for result before next action
+- End EVERY task with <ENDOFOP> — never leave a task open
 """
 
 TOOL_SCHEMAS = [
@@ -150,6 +170,24 @@ class Agent:
         self._final_result = result
         debug(f"Agent called 'done' with result: {result}")
         return f"[DONE] {result}"
+
+    def _extract_bare_json_tool(self, text: str):
+        """
+        Fallback: detect when model writes a raw JSON tool call without <action> tags.
+        Looks for {"tool": "...", "args": {...}} anywhere in the text.
+        Returns (tool_name, args) or None.
+        """
+        for m in re.finditer(r'\{[^{}]*"tool"\s*:\s*"([^"]+)"[^{}]*\}', text, re.DOTALL):
+            raw = m.group(0)
+            try:
+                obj = json.loads(raw)
+                tool = obj.get("tool") or obj.get("name")
+                args = obj.get("args") or obj.get("arguments") or {}
+                if tool:
+                    return str(tool), dict(args)
+            except Exception:
+                pass
+        return None
 
     def _parse_text_tool_calls(self, text: str):
         """Parse <tool>{...}</tool> blocks from model text output."""
@@ -268,9 +306,11 @@ class Agent:
                 self.on_step(step, max_steps)
 
             # ── Collect full streamed response, firing callbacks mid-stream ──
-            full_response   = []   # all tokens accumulated
+            raw_chunks      = []   # EVERY token including inside tags
+            full_response   = []   # only text tokens (outside tags) for display
             action_pending  = []   # set when <action> fires, holds (tool, args)
             endofop_summary = []   # set when <ENDOFOP> fires
+            last_thought    = []   # most recent thought content
 
             def on_text(token):
                 full_response.append(token)
@@ -279,6 +319,8 @@ class Agent:
 
             def on_thought(content):
                 debug(f"Thought: {content[:120]}")
+                last_thought.clear()
+                last_thought.append(content)
                 if self.on_thought:
                     self.on_thought(content)
 
@@ -304,13 +346,11 @@ class Agent:
             # ── Stream tokens through the parser ──────────────────────
             try:
                 for token in self.llm.stream_text(messages):
+                    raw_chunks.append(token)   # capture everything
                     parser.feed(token)
 
-                    # If action was detected mid-stream, stop reading and execute
                     if action_pending:
                         break
-
-                    # If ENDOFOP detected, stop reading
                     if endofop_summary:
                         break
 
@@ -322,15 +362,18 @@ class Agent:
                 debug(traceback.format_exc())
                 return f"[ERROR] Stream failed: {e}"
 
-            assembled = "".join(full_response)
-            self.history.append("assistant", assembled, step=step)
+            # raw_assembled = full streamed text INCLUDING tags (what model actually said)
+            # display_text  = only text outside tags (what user sees)
+            raw_assembled = "".join(raw_chunks)
+            display_text  = "".join(full_response)
+            self.history.append("assistant", display_text or raw_assembled, step=step)
 
             # ── ENDOFOP — task is done ─────────────────────────────────
             if endofop_summary:
                 summary = endofop_summary[0]
                 self._finished     = True
                 self._final_result = summary
-                messages.append({"role": "assistant", "content": assembled})
+                messages.append({"role": "assistant", "content": raw_assembled})
                 if self.on_done:
                     self.on_done(summary)
                 info(f"Task completed: {summary[:120]}")
@@ -349,8 +392,8 @@ class Agent:
                 if self.on_tool_result:
                     self.on_tool_result(tool_name, result)
 
-                # Inject into message history and continue
-                messages.append({"role": "assistant", "content": assembled})
+                # Save full raw response so model remembers its reasoning
+                messages.append({"role": "assistant", "content": raw_assembled})
                 messages.append({
                     "role":    "user",
                     "content": f"[Tool result for {tool_name}]\n{result}",
@@ -359,19 +402,18 @@ class Agent:
                 continue
 
             # ── No action, no ENDOFOP — model just talked ─────────────
-            messages.append({"role": "assistant", "content": assembled})
+            messages.append({"role": "assistant", "content": raw_assembled})
             debug(f"No action on step {step}. Nudging model.")
             messages.append({
                 "role":    "user",
                 "content": (
-                    "Continue. Use a <action> tool call to make progress, "
+                    "Continue. Use an <action> tool call to make progress, "
                     "or use <ENDOFOP> if the task is fully complete."
                 ),
             })
 
         warn("Max steps reached without ENDOFOP.")
         return "[MAX STEPS] Agent stopped without completing the task."
-
 
     def run_goal(self, goal, max_cycles=5, max_retries=3):
         debug(f"Goal mode started: {goal}")

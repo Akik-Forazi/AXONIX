@@ -175,25 +175,31 @@ def step_line(step: int, total: int, label: str = ""):
 
 # ── Banner ────────────────────────────────────────────────
 BANNER_ART = r"""
-   ██████╗ ███████╗██╗   ██╗███╗   ██╗███████╗████████╗
-   ██╔══██╗██╔════╝██║   ██║████╗  ██║██╔════╝╚══██╔══╝
-   ██║  ██║█████╗  ██║   ██║██╔██╗ ██║█████╗     ██║
-   ██║  ██║██╔══╝  ╚██╗ ██╔╝██║╚██╗██║██╔══╝     ██║
-   ██████╔╝███████╗ ╚████╔╝ ██║ ╚████║███████╗   ██║
-   ╚═════╝ ╚══════╝  ╚═══╝  ╚═╝  ╚═══╝╚══════╝   ╚═╝
+  █████╗ ██╗  ██╗ ██████╗ ███╗   ██╗ ██╗ ██╗  ██╗
+ ██╔══██╗╚██╗██╔╝██╔═══██╗████╗  ██║ ██║ ╚██╗██╔╝
+ ███████║ ╚███╔╝ ██║   ██║██╔██╗ ██║ ██║  ╚███╔╝ 
+ ██╔══██║ ██╔██╗ ██║   ██║██║╚██╗██║ ██║  ██╔██╗ 
+ ██║  ██║██╔╝ ██╗╚██████╔╝██║ ╚████║ ██║ ██╔╝ ██╗
+ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═╝ ╚═╝  ╚═╝
 """
 
 def print_banner(version="1.0.0", model="local", backend="direct", model_path=""):
-    if HAS_COLOR:
-        art_colored = ""
-        for ch in BANNER_ART:
-            if ch in "█╗╝╔╚═║":
-                art_colored += C.BLUE + ch + C.RESET
-            else:
-                art_colored += C.GRAY + ch + C.RESET
-        print(art_colored)
-    else:
-        print(BANNER_ART)
+    try:
+        if HAS_COLOR:
+            art_colored = ""
+            for ch in BANNER_ART:
+                if ch in "█╗╝╔╚═║":
+                    art_colored += C.BLUE + ch + C.RESET
+                else:
+                    art_colored += C.GRAY + ch + C.RESET
+            print(art_colored)
+        else:
+            print(BANNER_ART)
+        print(f"  {C.CYAN}by Fraziym Tech & AI{C.RESET}  {C.DGRAY}*{C.RESET}  {C.WHITE}AKIK FARAJI{C.RESET}")
+    except UnicodeEncodeError:
+        print("  === AXONIX ===")
+        print("  by Fraziym Tech & AI  *  AKIK FARAJI")
+    print()
 
     import os
     backend_label = f"{C.GREEN}direct (in-process){C.RESET}" if backend == "direct" else f"{C.YELLOW}server{C.RESET}"
@@ -363,11 +369,19 @@ class CLI:
             state["spinner"] = Spinner("Thinking…")
             state["spinner"].start()
 
+        def on_thought(content):
+            state["spinner"].stop()
+            preview = content.strip().replace('\n', ' ')[:100]
+            print(f"\n   {C.PURPLE}💭{C.RESET}  {C.DGRAY}{preview}…{C.RESET}")
+            state["spinner"] = Spinner("Thinking…")
+            state["spinner"].start()
+
         def on_token(token):
             # In agent mode, model sometimes emits text before tool calls
             pass
 
         self.agent.on_step        = on_step
+        self.agent.on_thought     = on_thought
         self.agent.on_tool_call   = on_tool_call
         self.agent.on_tool_result = on_tool_result
         self.agent.on_token       = on_token

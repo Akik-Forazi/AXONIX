@@ -351,7 +351,10 @@ class WebServer:
     def start(self, open_browser=True):
         server = _QuietServer((self.host, self.port), AxonixHandler)
         url    = f"http://{self.host}:{self.port}"
-        print(f"\n\033[96m[Axonix Web]\033[0m → \033[92m{url}\033[0m  (Ctrl+C to stop)\n")
+        try:
+            print(f"\n\033[96m[Axonix Web]\033[0m -> \033[92m{url}\033[0m  (Ctrl+C to stop)\n")
+        except UnicodeEncodeError:
+            print(f"\n[Axonix Web] -> {url}  (Ctrl+C to stop)\n")
         if open_browser:
             threading.Thread(
                 target=lambda: (time.sleep(0.9), webbrowser.open(url)),

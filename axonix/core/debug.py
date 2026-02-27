@@ -51,7 +51,6 @@ def log_json(data, label="JSON"):
         return
     try:
         formatted = json.dumps(data, indent=2)
-        debug(f"{label}:
-{formatted}")
+        debug(f"{label}:\n{formatted}")
     except:
         debug(f"{label}: {data}")
