@@ -1,7 +1,7 @@
 """
-axonix CLI — Claude Code / Gemini CLI style terminal experience
-Rich, interactive, with live spinner, panels, syntax hints
-Pure stdlib + optional 'rich' library for premium output
+This is where we build the face of AXONIX-ZERO. It handles all the colors,
+the spinning icons, and how the text looks in your terminal.
+We want it to feel friendly and modern, almost like you're chatting with a developer.
 """
 
 import sys

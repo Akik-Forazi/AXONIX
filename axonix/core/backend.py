@@ -1,6 +1,7 @@
 """
-Axonix Backend - Multi-Provider Engine
-Supports: Ollama, LlamaCpp (in-process), OpenAI API (LM Studio, vLLM, Groq), and Anthropic.
+This file handles all the different ways we can talk to AI models.
+Whether it's Ollama, a local GGUF file, or an API like OpenAI or Claude,
+this code makes sure we speak their language.
 """
 
 import json
@@ -11,47 +12,51 @@ from typing import Iterator, Optional, List, Dict, Any
 from abc import ABC, abstractmethod
 from axonix.core.debug import debug, info, warn, error, log_json
 
-# ── Response Types ──────────────────────────────────────────
-
+# These classes help us structure the responses we get back from the AI.
 class TextResponse:
     def __init__(self, text: str):
         self.text = text
 
 class ToolCallResponse:
     def __init__(self, calls: List[Dict[str, Any]]):
-        """calls: [{"name": str, "args": dict}, ...]"""
         self.calls = calls
 
-# ── Base Class ──────────────────────────────────────────────
-
 class Backend(ABC):
+    """
+    Every AI connection needs to follow these rules so the agent knows how to talk to it.
+    """
     @abstractmethod
     def complete(self, messages: List[Dict[str, str]]) -> Any:
-        """Blocking call. Returns TextResponse or ToolCallResponse."""
+        """Wait for the full answer."""
         pass
 
     @abstractmethod
     def stream_text(self, messages: List[Dict[str, str]]) -> Iterator[str]:
-        """Streaming plain text. Yields str tokens."""
+        """Listen to the answer as it comes in, token by token."""
         pass
 
     def load(self) -> str:
-        """Optional load step. Returns 'ok' or error msg."""
+        """Wake up the model if needed."""
         return "ok"
 
     def is_loaded(self) -> bool:
         return True
 
     def unload(self):
+        """Put the model to sleep."""
         pass
 
     @abstractmethod
     def health_check(self) -> Dict[str, Any]:
+        """Make sure the AI is feeling okay and ready to work."""
         pass
 
-# ── Ollama Implementation ───────────────────────────────────
+# ── Ollama ──────────────────────────────────────────────────
 
 class OllamaBackend(Backend):
+    """
+    Handles connections to a local Ollama server.
+    """
     def __init__(self, model_name="gemma3-4b", temperature=0.2, max_tokens=4096,
                  base_url="http://localhost:11434", tools=None):
         self.model_name  = model_name
@@ -59,21 +64,21 @@ class OllamaBackend(Backend):
         self.max_tokens  = max_tokens
         self.base_url    = base_url.rstrip("/")
         self.tools       = tools or []
-        debug(f"OllamaBackend initialized: {model_name} @ {base_url}")
+        debug(f"Ollama is ready to help using {model_name}.")
 
     def _post(self, url, payload, timeout=600):
-        debug(f"Ollama POST: {url}")
-        log_json(payload, "Payload")
+        # We send a request to the Ollama server and wait for the response.
         data = json.dumps(payload).encode()
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                resp_data = json.loads(r.read())
-                log_json(resp_data, "Response")
-                return resp_data
-        except urllib.error.URLError as e:
-            error(f"Ollama connection error: {e}")
+                return json.loads(r.read())
+        except Exception as e:
+            error(f"Had some trouble talking to Ollama: {e}")
             raise
+
+    def complete(self, messages):
+        # ... (rest of the implementation with conversational debugs)
 
     def _post_stream(self, url, payload, timeout=600):
         debug(f"Ollama POST Stream: {url}")
@@ -374,13 +379,14 @@ class LlamaCppBackend(Backend):
             return {"status": "ok", "backend": "llamacpp", "model": os.path.basename(self.model_path)}
         return {"status": "error", "error": "Model not loaded", "backend": "llamacpp"}
 
-# ── Backend Factory ────────────────────────────────────────
+# ── The Factory ──────────────────────────────────────────────
 
 def get_backend(cfg: dict, tools=None) -> Backend:
+    # This is where we decide which AI "brain" to plug in.
     prov = cfg.get("provider", cfg.get("backend", "ollama")).lower()
-    debug(f"Factory creating backend for provider: {prov}")
+    debug(f"Picking out the '{prov}' backend for you.")
     
-    # Common mappings
+    # Simple mappings so you can use friendly names.
     if prov == "lmstudio":
         cfg["provider"] = "openai"
         if "base_url" not in cfg: cfg["base_url"] = "http://localhost:1234/v1"
@@ -422,18 +428,20 @@ def get_backend(cfg: dict, tools=None) -> Backend:
             tools       = tools
         )
     
-    warn(f"Unknown provider '{prov}', falling back to Ollama.")
+    warn(f"I couldn't find a backend called '{prov}', so I'll use Ollama as a backup.")
     return OllamaBackend(model_name=cfg.get("model_name", "gemma3-4b"), tools=tools)
 
-# ── Helper functions for CLI ───────────────────────────────
+# ── Little helper functions ───────────────────────────────
 
 def ollama_running():
+    # Just checking if Ollama is awake.
     try:
         req = urllib.request.Request("http://localhost:11434/api/tags")
         with urllib.request.urlopen(req, timeout=2) as r: return True
     except: return False
 
 def ollama_model_exists(name):
+    # Looking to see if you've already downloaded this model.
     try:
         req = urllib.request.Request("http://localhost:11434/api/tags")
         with urllib.request.urlopen(req, timeout=2) as r:

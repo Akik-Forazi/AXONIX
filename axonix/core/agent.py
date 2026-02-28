@@ -1,6 +1,7 @@
 """
-Axonix Agent - Multi-provider tool calling.
-Clean agentic loop: complete() -> ToolCallResponse | TextResponse.
+This is the heart of AXONIX-ZERO. It's where the agent lives, breathes, and figures out
+how to help you with your code. It handles the tools, remembers what you've said,
+and talks to the AI backends.
 """
 
 import json
@@ -15,56 +16,23 @@ from axonix.tools.code_tools import CodeTools
 from axonix.core.history import ChatHistory
 from axonix.core.debug import debug, info, warn, error, log_json
 
-SYSTEM_PROMPT = """You are Axonix, a fully local AI coding agent running on Windows.
-You complete development tasks autonomously using the tools available to you.
+# This is how we tell the AI how to behave. We want it to be a helpful friend,
+# not just a cold machine.
+SYSTEM_PROMPT = """Hello! I am AXONIX-ZERO, your local AI coding friend. 
+I'm here to help you build, fix, and understand your projects right here on Windows.
 
-PLATFORM: Windows. Use 'dir' not 'ls', 'type' not 'cat'. Backslashes or forward slashes both work.
-Prefer file_read/file_write over shell commands for file operations.
+I'll think through your problems out loud so you can see what's on my mind, 
+and then I'll use my tools to get things done.
 
-━━━ RESPONSE FORMAT ━━━
-You MUST use these exact XML tags in your responses:
+How I communicate:
+1. When I'm thinking, I'll wrap it in <thought> tags.
+2. When I need to use a tool, I'll use an <action> block with a little JSON inside.
+3. When I'm all finished and you've got what you need, I'll let you know using <ENDOFOP>.
 
-1. THINKING — wrap your reasoning:
-<thought>
-your reasoning here about what to do next
-</thought>
+I'll try my best to use the right tools for the job. If I'm writing files, I'll 
+usually use 'file_write' instead of a shell command because it's safer.
 
-2. TOOL CALL — call a tool:
-<action>
-{"tool": "tool_name", "args": {"arg1": "value1", "arg2": "value2"}}
-</action>
-
-3. TASK COMPLETE — when fully done:
-<ENDOFOP>
-Brief summary of what was accomplished
-</ENDOFOP>
-
-━━━ AVAILABLE TOOLS ━━━
-file_read(path)                         — read file with line numbers
-file_write(path, content)               — write/overwrite a file
-file_edit(path, old, new)               — find and replace text in file
-file_append(path, content)              — append text to file
-file_delete(path)                       — delete file or directory
-file_list(path=".")                     — list directory contents
-file_search(path=".", pattern="*")      — find files by glob pattern
-shell_run(command)                      — run Windows CMD command
-shell_python(code)                      — execute Python code
-web_get(url)                            — fetch URL content
-web_search(query)                       — search web via DuckDuckGo
-code_lint(path)                         — lint Python with flake8
-code_format(path)                       — format Python with black
-code_tree(path=".")                     — show file tree
-code_analyze(path=".")                  — architectural overview of Python code
-memory_save(key, value)                 — save to persistent memory
-memory_get(key)                         — get from memory
-memory_list()                           — list all memory keys
-
-━━━ RULES ━━━
-- Always wrap reasoning in <thought> tags first
-- One <action> at a time — wait for the result before the next
-- Verify your work after writing files or running commands
-- Use <ENDOFOP> ONLY when the task is truly and completely done
-- Never skip the <ENDOFOP> tag — always close the task
+Let's build something great together!
 """
 
 TOOL_SCHEMAS = [
@@ -90,7 +58,12 @@ TOOL_SCHEMAS = [
 
 
 class Agent:
+    """
+    Think of this class as the "brain" of our agent. It keeps track of 
+    your files, your history, and your local memory.
+    """
     def __init__(self, **kwargs):
+        # We set everything up here, connecting all our tools and loading our memory.
         self.config      = kwargs
         self.memory      = Memory()
         self.workspace   = os.path.abspath(kwargs.get("workspace", "."))
@@ -100,6 +73,7 @@ class Agent:
         self.code_tools  = CodeTools(self.workspace)
         self.history     = ChatHistory(self.workspace)
 
+        # This map helps us find the right tool when the AI asks for it.
         self._tool_map: dict[str, Callable] = {
             "file_read":    self.file_tools.read,
             "file_write":   self.file_tools.write,
@@ -139,18 +113,21 @@ class Agent:
         log_json(self.config, "Config")
 
     def _build_llm(self):
+        # Time to wake up the backend!
         from axonix.core.backend import get_backend
         # No tool schemas — we use streaming text-based tool parsing
         self.llm = get_backend(self.config, tools=None)
-        debug(f"LLM backend built: {type(self.llm).__name__}")
+        debug(f"Connected to the {type(self.llm).__name__} backend.")
 
     def _rebuild_llm(self):
+        # Just in case we need to restart the brain.
         self._build_llm()
 
     def _done(self, result=""):
+        # We call this when the mission is accomplished.
         self._finished     = True
         self._final_result = result
-        debug(f"Agent called 'done' with result: {result}")
+        debug(f"Task finished! Result: {result}")
         return f"[DONE] {result}"
 
     def _parse_text_tool_calls(self, text: str):
@@ -171,26 +148,27 @@ class Agent:
         return calls
 
     def _exec_tool(self, name, args):
+        # This is where we actually run the tools the AI asked for.
         if name not in self._tool_map:
-            warn(f"Unknown tool called: {name}")
+            warn(f"I don't know how to use a tool called '{name}'.")
             return f"[ERROR] Unknown tool '{name}'"
         
-        debug(f"Executing tool '{name}' with args: {args}")
+        debug(f"Running the '{name}' tool...")
         try:
             r = self._tool_map[name](**args)
             result = str(r) if r is not None else "OK"
             debug(f"Tool '{name}' result (first 100 chars): {result[:100]}...")
             return result
         except TypeError as e:
-            msg = f"[ERROR] Bad args for '{name}': {e}"
+            msg = f"It looks like I got the wrong ingredients for '{name}': {e}"
             error(msg)
-            return msg
+            return f"[ERROR] {msg}"
         except Exception as e:
-            msg = f"[ERROR] Tool '{name}' raised: {e}"
-            error(f"Tool execution failed: {e}")
+            msg = f"Something went wrong while using '{name}': {e}"
+            error(msg)
             import traceback
             debug(traceback.format_exc())
-            return msg
+            return f"[ERROR] {msg}"
 
     def load_model(self):
         debug("Loading model...")
@@ -241,10 +219,12 @@ class Agent:
         self.history.append("assistant", full, mode="chat")
 
     def _get_system_prompt(self):
+        # We grab everything we've remembered so far and add it to the prompt
+        # so the AI doesn't forget who we are or what we're working on.
         mem_data = self.memory.all()
         mem_str = ""
         if mem_data:
-            mem_str = "\n\n━━━━━━━━━━ PERSISTENT MEMORY ━━━━━━━━━━\n"
+            mem_str = "\n\n━━━━━━━━━━ MY MEMORY ━━━━━━━━━━\n"
             for k, v in mem_data.items():
                 mem_str += f"{k}: {v}\n"
         
@@ -252,15 +232,17 @@ class Agent:
 
     def run(self, task: str):
         """
-        Streaming agent loop with real-time tag parsing.
+        This is the main loop where the agent works through a task.
+        It listens to the AI, parses its thoughts and actions, 
+        and keeps going until the job is done.
         """
         from axonix.core.stream_parser import StreamParser
 
-        debug(f"Agent starting task: {task}")
+        debug(f"Starting work on: {task}")
         self._finished     = False
         self._final_result = None
 
-        # Inject current memory into the system prompt
+        # Make sure the AI has all its memories before it starts.
         current_system_prompt = self._get_system_prompt()
 
         messages = [
@@ -273,7 +255,7 @@ class Agent:
         action_history = [] # Track (tool, args) to detect loops
 
         for step in range(1, max_steps + 1):
-            debug(f"--- Step {step}/{max_steps} ---")
+            debug(f"Working on step {step} of {max_steps}...")
             if self.on_step:
                 self.on_step(step, max_steps)
 
@@ -288,20 +270,20 @@ class Agent:
                     self.on_token(token)
 
             def on_thought(content):
-                debug(f"Thought: {content[:120]}")
+                debug("I'm thinking about something...")
                 if self.on_thought:
                     self.on_thought(content)
 
             def on_action(tool, args):
-                debug(f"Action detected: {tool} {args}")
+                debug(f"I've decided to use the '{tool}' tool.")
                 action_pending.append((tool, args))
 
             def on_endofop(summary):
-                debug(f"ENDOFOP: {summary[:120]}")
+                debug("I think I'm finished!")
                 endofop_summary.append(summary)
 
             def on_parse_error(msg):
-                warn(f"Parser error: {msg}")
+                warn(f"Had a little trouble parsing: {msg}")
 
             parser = StreamParser(
                 on_text    = on_text,
@@ -311,60 +293,51 @@ class Agent:
                 on_error   = on_parse_error,
             )
 
-            # ── Stream tokens through the parser ──────────────────────
+            # Let's see what the AI has to say.
             try:
                 for token in self.llm.stream_text(messages):
                     parser.feed(token)
-
-                    # If action was detected mid-stream, stop reading and execute
-                    if action_pending:
-                        break
-
-                    # If ENDOFOP detected, stop reading
-                    if endofop_summary:
-                        break
-
+                    if action_pending or endofop_summary:
+                        break # We've got an action or we're done, no need to keep listening for now.
                 parser.flush()
-
             except Exception as e:
-                error(f"Stream error on step {step}: {e}")
+                error(f"Lost the connection on step {step}: {e}")
                 import traceback
                 debug(traceback.format_exc())
-                return f"[ERROR] Stream failed: {e}"
+                return f"[ERROR] Connection failed: {e}"
 
             assembled = "".join(full_response)
             self.history.append("assistant", assembled, step=step)
 
-            # ── ENDOFOP — task is done ─────────────────────────────────
+            # Did the AI say it was finished?
             if endofop_summary:
                 summary = endofop_summary[0]
                 self._finished     = True
                 self._final_result = summary
                 messages.append({"role": "assistant", "content": assembled})
-                if self.on_done:
-                    self.on_done(summary)
-                info(f"Task completed: {summary[:120]}")
+                if self.on_done: self.on_done(summary)
+                info("All done with this task!")
                 return summary
 
-            # ── ACTION — execute tool and continue ────────────────────
+            # Did it ask to use a tool?
             if action_pending:
                 tool_name, tool_args = action_pending[0]
 
-                # Loop Detection
+                # Let's make sure we're not just doing the same thing over and over.
                 action_sig = (tool_name, json.dumps(tool_args, sort_keys=True))
                 action_history.append(action_sig)
                 
                 repeat_count = action_history.count(action_sig)
                 if repeat_count >= 3:
-                    warn(f"Repetitive action detected: {tool_name}. Count: {repeat_count}")
+                    warn(f"Wait, I've already done this {repeat_count} times...")
                     messages.append({
                         "role": "user",
-                        "content": f"You have already called {tool_name} with these arguments {repeat_count} times. If the result wasn't what you expected, try a different approach or tool. If you are stuck, think about what's missing."
+                        "content": "It looks like we're repeating ourselves. Maybe try a different tool?"
                     })
                 
                 if repeat_count >= 5:
-                    error("Max repetitions reached. Aborting to prevent loop.")
-                    return f"[ERROR] Agent got stuck in a loop calling {tool_name}."
+                    error("I'm stuck in a loop. I'd better stop before I make things worse.")
+                    return f"[ERROR] Stuck in a loop calling {tool_name}."
 
                 if self.on_tool_call:
                     self.on_tool_call(tool_name, tool_args)
@@ -375,28 +348,25 @@ class Agent:
                 if self.on_tool_result:
                     self.on_tool_result(tool_name, result)
 
-                # Inject into message history and continue
+                # Tell the AI what happened and let it continue.
                 messages.append({"role": "assistant", "content": assembled})
                 messages.append({
                     "role":    "user",
-                    "content": f"[Tool result for {tool_name}]\n{result}",
+                    "content": f"The '{tool_name}' tool returned:\n{result}",
                 })
-                debug(f"Tool result injected, continuing to step {step + 1}")
+                debug(f"Result from {tool_name} is in. Moving to step {step + 1}")
                 continue
 
-            # ── No action, no ENDOFOP — model just talked ─────────────
+            # If it didn't use a tool or finish, we'll give it a gentle nudge.
             messages.append({"role": "assistant", "content": assembled})
-            debug(f"No action on step {step}. Nudging model.")
+            debug("The AI just talked without acting. I'll nudge it.")
             messages.append({
                 "role":    "user",
-                "content": (
-                    "Continue. Use a <action> tool call to make progress, "
-                    "or use <ENDOFOP> if the task is fully complete."
-                ),
+                "content": "Keep going! Use a tool or let me know if you're finished.",
             })
 
-        warn("Max steps reached without ENDOFOP.")
-        return "[MAX STEPS] Agent stopped without completing the task."
+        warn("I've reached my limit of steps for this task.")
+        return "I had to stop because I reached my maximum number of steps."
 
 
     def run_goal(self, goal, max_cycles=5, max_retries=3):

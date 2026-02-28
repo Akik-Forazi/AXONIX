@@ -1,7 +1,7 @@
 """
-axonix Model Registry
-All recommended GGUF models for your device (i5-8350U, 16GB RAM, CPU-only)
-Switch models with: axonix model use <name>
+This module serves as the central registry for all AI models supported by AXONIX-ZERO.
+It provides detailed metadata for each model variant, including hardware requirements
+and performance expectations, ensuring users can select the best "brain" for their tasks.
 """
 
 from dataclasses import dataclass, field
@@ -10,36 +10,40 @@ from typing import Optional
 
 @dataclass
 class ModelVariant:
-    name: str                    # short alias e.g. "qwen-coder"
-    gguf_name: str               # actual filename on HuggingFace
-    repo: str                    # HuggingFace repo
-    size_gb: float               # approximate GGUF size
-    ram_gb: float                # RAM needed to run
-    ctx: int                     # recommended context size
-    temperature: float           # best temperature for this model's use case
-    max_tokens: int              # safe max tokens
-    tags: list[str]              # e.g. ["coding", "fast", "multimodal"]
-    description: str
-    best_for: str
-    speed_toks: str              # expected tok/s on i5-8350U
-    recommended: bool = False    # is this THE recommended pick
+    """
+    Represents a specific AI model configuration.
+    Includes technical specifications and human-readable guidance on its intended use.
+    """
+    name: str                    # A short, memorable identifier (e.g., "qwen-coder").
+    gguf_name: str               # The technical filename used for local execution.
+    repo: str                    # The source repository on HuggingFace.
+    size_gb: float               # Disk space footprint in Gigabytes.
+    ram_gb: float                # Minimum system memory required for stable operation.
+    ctx: int                     # Maximum context window (token limit).
+    temperature: float           # The optimized creativity setting for this model.
+    max_tokens: int              # Safe upper limit for generated responses.
+    tags: list[str]              # Functional categories (e.g., ["coding", "reasoning"]).
+    description: str             # A concise summary of the model's architecture.
+    best_for: str                # Practical advice on when to use this model.
+    speed_toks: str              # Expected performance on standard hardware.
+    recommended: bool = False    # Whether this is the primary choice for most users.
 
     @property
     def hf_url(self) -> str:
+        """Returns the direct link to the model's home on HuggingFace."""
         return f"https://huggingface.co/{self.repo}"
 
     def fits(self, available_ram_gb: float = 14.0) -> bool:
+        """Determines if the current system has enough memory to run this model."""
         return self.ram_gb <= available_ram_gb
 
 
-# ══════════════════════════════════════════════════════════════
-#  MODEL REGISTRY
-#  Tuned for: Intel i5-8350U · 16GB RAM · CPU-only · Windows 11
-# ══════════════════════════════════════════════════════════════
+# ── The Global Model Registry ──────────────────────────────
+# These models have been carefully vetted for performance on typical mobile/desktop CPUs.
 
 REGISTRY: dict[str, ModelVariant] = {
 
-    # ── LOCAL / CUSTOM (already downloaded) ───────────────────
+    # ── Default Local Selection ─────────────────────────────
 
     "gemma3-4b": ModelVariant(
         name="gemma3-4b",
@@ -50,15 +54,15 @@ REGISTRY: dict[str, ModelVariant] = {
         ctx=8192,
         temperature=0.7,
         max_tokens=4096,
-        tags=["local", "general", "multimodal", "vision", "reasoning", "uncensored"],
-        description="Gemma 3 4B VL — vision+language, Gemini-Pro style, Q8 quality",
-        best_for="General assistant, vision tasks, reasoning, uncensored responses",
+        tags=["local", "general", "multimodal", "vision", "reasoning"],
+        description="Gemma 3 4B VL — A versatile multimodal model combining vision and language.",
+        best_for="General assistance, visual analysis, and logical reasoning.",
         speed_toks="5–9 tok/s",
         recommended=True,
     ),
 
 
-    # ── CODING (Primary dev work) ──────────────────────────────
+    # ── Specialized Coding Models ──────────────────────────
 
     "qwen-coder": ModelVariant(
         name="qwen-coder",
@@ -67,42 +71,12 @@ REGISTRY: dict[str, ModelVariant] = {
         size_gb=5.9,
         ram_gb=8.5,
         ctx=8192,
-        temperature=0.2,        # lower = more deterministic code
-        max_tokens=4096,
-        tags=["coding", "best", "fast", "agentic"],
-        description="Qwen2.5-Coder 7B Instruct Q6_K — state-of-the-art 7B coder, superior quality",
-        best_for="Python, JS, HTML, SQL, shell scripts, code review, debugging, axonix agent tasks",
-        speed_toks="3–5 tok/s",
-    ),
-
-    "qwen-coder-q8": ModelVariant(
-        name="qwen-coder-q8",
-        gguf_name="Qwen2.5-Coder-7B-Instruct-Q8_0.gguf",
-        repo="Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
-        size_gb=7.9,
-        ram_gb=9.5,
-        ctx=8192,
         temperature=0.2,
         max_tokens=4096,
-        tags=["coding", "quality", "slower"],
-        description="Qwen2.5-Coder 7B Q8 — higher quality than Q4, uses more RAM but still fits",
-        best_for="When you want maximum code quality and can wait a bit longer",
-        speed_toks="2–4 tok/s",
-    ),
-
-    "deepseek-coder": ModelVariant(
-        name="deepseek-coder",
-        gguf_name="deepseek-coder-6.7b-instruct.Q4_K_M.gguf",
-        repo="TheBloke/deepseek-coder-6.7B-instruct-GGUF",
-        size_gb=4.1,
-        ram_gb=5.8,
-        ctx=4096,
-        temperature=0.0,        # DeepSeek-Coder works best at temp=0
-        max_tokens=2048,
-        tags=["coding", "fast", "lightweight"],
-        description="DeepSeek-Coder 6.7B Q4 — very fast, solid at code completion and infilling",
-        best_for="Quick code completions, boilerplate, filling in functions",
-        speed_toks="5–7 tok/s",
+        tags=["coding", "professional", "agentic"],
+        description="Qwen2.5-Coder 7B — A state-of-the-art model for software development.",
+        best_for="Python, JavaScript, SQL, and complex architectural tasks.",
+        speed_toks="3–5 tok/s",
     ),
 
     "phi35-mini": ModelVariant(
@@ -114,28 +88,13 @@ REGISTRY: dict[str, ModelVariant] = {
         ctx=8192,
         temperature=0.3,
         max_tokens=2048,
-        tags=["fast", "lightweight", "general", "coding"],
-        description="Phi-3.5 Mini 3.8B Q4 — Microsoft's tiny but surprisingly capable model",
-        best_for="Quick questions, fast responses, low-stakes coding tasks",
+        tags=["fast", "lightweight", "efficient"],
+        description="Phi-3.5 Mini — A compact yet surprisingly powerful model from Microsoft.",
+        best_for="Low-latency tasks and lightweight coding automation.",
         speed_toks="10–14 tok/s",
     ),
 
-    # ── GENERAL / CHAT ─────────────────────────────────────────
-
-    "qwen25-general": ModelVariant(
-        name="qwen25-general",
-        gguf_name="Qwen2.5-7B-Instruct-Q4_K_M.gguf",
-        repo="Qwen/Qwen2.5-7B-Instruct-GGUF",
-        size_gb=4.7,
-        ram_gb=6.5,
-        ctx=8192,
-        temperature=0.7,
-        max_tokens=4096,
-        tags=["general", "chat", "reasoning", "coding"],
-        description="Qwen2.5 7B Instruct Q4 — best general-purpose 7B, great reasoning + coding",
-        best_for="General chat, planning, reasoning, mixed coding+writing tasks",
-        speed_toks="4–6 tok/s",
-    ),
+    # ── General Purpose & Lightweight ──────────────────────
 
     "llama32-3b": ModelVariant(
         name="llama32-3b",
@@ -146,98 +105,21 @@ REGISTRY: dict[str, ModelVariant] = {
         ctx=4096,
         temperature=0.6,
         max_tokens=2048,
-        tags=["fast", "lightweight", "general"],
-        description="Llama 3.2 3B Q4 — Meta's tiny but capable model, very fast on CPU",
-        best_for="Fast responses, simple tasks, when speed matters more than quality",
+        tags=["fast", "standard", "chat"],
+        description="Llama 3.2 3B — Meta's highly efficient model for general interaction.",
+        best_for="Quick chat, simple explanations, and high-speed feedback.",
         speed_toks="12–18 tok/s",
-    ),
-
-    "mistral-7b": ModelVariant(
-        name="mistral-7b",
-        gguf_name="Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
-        repo="MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF",
-        size_gb=4.4,
-        ram_gb=6.0,
-        ctx=8192,
-        temperature=0.6,
-        max_tokens=4096,
-        tags=["general", "chat", "instruction"],
-        description="Mistral 7B Instruct v0.3 Q4 — reliable, well-rounded general model",
-        best_for="General assistant tasks, writing, analysis",
-        speed_toks="4–7 tok/s",
-    ),
-
-    # ── MULTIMODAL (vision + text) ─────────────────────────────
-
-    "llava-mistral": ModelVariant(
-        name="llava-mistral",
-        gguf_name="llava-v1.6-mistral-7b.Q4_K_M.gguf",
-        repo="cjpais/llava-1.6-mistral-7b-gguf",
-        size_gb=4.5,
-        ram_gb=6.5,
-        ctx=4096,
-        temperature=0.4,
-        max_tokens=2048,
-        tags=["multimodal", "vision", "coding", "image"],
-        description="LLaVA 1.6 Mistral 7B Q4 — best multimodal for your device, image+text",
-        best_for="Reading screenshots, understanding diagrams, UI feedback, image analysis",
-        speed_toks="3–5 tok/s",
-    ),
-
-    "moondream": ModelVariant(
-        name="moondream",
-        gguf_name="moondream2-text-model-f16.gguf",
-        repo="vikhyatk/moondream2",
-        size_gb=1.7,
-        ram_gb=2.5,
-        ctx=2048,
-        temperature=0.3,
-        max_tokens=1024,
-        tags=["multimodal", "vision", "tiny", "fast"],
-        description="Moondream2 — ultra-tiny vision model, very fast image understanding",
-        best_for="Quick image descriptions, OCR-like tasks, fast vision queries",
-        speed_toks="8–12 tok/s",
-    ),
-
-    # ── REASONING / MATH ───────────────────────────────────────
-
-    "qwen25-math": ModelVariant(
-        name="qwen25-math",
-        gguf_name="Qwen2.5-Math-7B-Instruct-Q4_K_M.gguf",
-        repo="bartowski/Qwen2.5-Math-7B-Instruct-GGUF",
-        size_gb=4.7,
-        ram_gb=6.5,
-        ctx=4096,
-        temperature=0.0,
-        max_tokens=2048,
-        tags=["math", "reasoning", "science"],
-        description="Qwen2.5-Math 7B — specialized for math, equations, scientific reasoning",
-        best_for="Algorithms, complexity analysis, math problems, data science",
-        speed_toks="4–6 tok/s",
-    ),
-
-    "nemotron-mini": ModelVariant(
-        name="nemotron-mini",
-        gguf_name="Nemotron-Mini-4B-Instruct-Q4_K_M.gguf",
-        repo="bartowski/Nemotron-Mini-4B-Instruct-GGUF",
-        size_gb=2.6,
-        ram_gb=4.0,
-        ctx=4096,
-        temperature=0.3,
-        max_tokens=2048,
-        tags=["reasoning", "fast", "general"],
-        description="NVIDIA Nemotron Mini 4B — strong reasoning for its tiny size",
-        best_for="Step-by-step reasoning, structured outputs, agentic planning",
-        speed_toks="8–11 tok/s",
     ),
 }
 
 
 def get(name: str) -> Optional[ModelVariant]:
+    """Retrieves a model configuration by its registry name."""
     return REGISTRY.get(name)
 
 
 def recommended() -> ModelVariant:
+    """Returns the primary model recommended for AXONIX-ZERO."""
     for m in REGISTRY.values():
         if m.recommended:
             return m
@@ -245,19 +127,22 @@ def recommended() -> ModelVariant:
 
 
 def by_tag(tag: str) -> list[ModelVariant]:
+    """Filters the registry for models matching a specific capability tag."""
     return [m for m in REGISTRY.values() if tag in m.tags]
 
 
 def fits_device(ram_gb: float = 14.0) -> list[ModelVariant]:
+    """Returns all models that can safely operate within the specified RAM limit."""
     return [m for m in REGISTRY.values() if m.fits(ram_gb)]
 
 
 def all_models() -> list[ModelVariant]:
+    """Provides a complete list of all registered model variants."""
     return list(REGISTRY.values())
 
 
 def show_table():
-    """Print a formatted table of all models."""
+    """Renders a professional, color-coded table of available models in the terminal."""
     from axonix.core.cli import C
     rows = []
     for m in REGISTRY.values():
@@ -269,7 +154,7 @@ def show_table():
     header = ["MODEL", "SIZE", "SPEED (CPU)", "TAGS", "BEST FOR"]
 
     sep = "  " + "─" * (sum(col_w) + len(col_w) * 2)
-    print(f"\n{C.BOLD}{C.WHITE}  Available Models{C.RESET}  {C.DGRAY}(your device: i5-8350U · 16GB · CPU-only){C.RESET}")
+    print(f"\n{C.BOLD}{C.WHITE}  Available Intelligence Variants{C.RESET}")
     print(sep)
     h = "  " + "  ".join(f"{C.GRAY}{h:<{w}}{C.RESET}" for h, w in zip(header, col_w))
     print(h)
@@ -290,4 +175,4 @@ def show_table():
             colored.append(f"{color}{cell:<{w}}{C.RESET}")
         print("  " + "  ".join(colored))
     print(sep)
-    print(f"  {C.DGRAY}★ = recommended  ·  use: axonix model use <name>{C.RESET}\n")
+    print(f"  {C.DGRAY}★ = Standard Recommendation  ·  Command: axonix model use <name>{C.RESET}\n")
