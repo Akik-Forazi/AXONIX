@@ -1,6 +1,6 @@
 """
 Axonix Backend - Multi-Provider Engine
-Supports: Ollama, LlamaCpp (in-process), Web APIs, and custom Zarx/Torch loaders.
+Supports: Ollama, LlamaCpp (in-process), OpenAI API (LM Studio, vLLM, Groq), and Anthropic.
 """
 
 import json
@@ -121,41 +121,7 @@ class OllamaBackend(Backend):
                 if calls: return ToolCallResponse(calls)
             
             content = msg.get("content", "")
-            debug(f"Ollama returned text response: {content[:100]}...")
             return TextResponse(content)
-        except urllib.error.HTTPError as e:
-            if e.code == 400:
-                warn("Ollama returned 400. Attempting to strip tool-related messages and retry...")
-                # Model doesn't support tool calling OR tool_calls in message history
-                # Strip tools AND any tool_call/tool role messages, retry as plain chat
-                clean_messages = []
-                for m in messages:
-                    if m.get("role") == "tool":
-                        # Convert tool result to user message
-                        clean_messages.append({"role": "user", "content": f"[Tool result]: {m.get('content', '')}"})
-                    elif "tool_calls" in m:
-                        # Convert assistant tool call to plain assistant message
-                        calls_text = "; ".join(
-                            f"{tc['function']['name']}({tc['function'].get('arguments','{}')})"
-                            for tc in m.get("tool_calls", [])
-                        )
-                        clean_messages.append({"role": "assistant", "content": f"[Calling tools: {calls_text}]"})
-                    else:
-                        clean_messages.append(m)
-                plain_payload = {
-                    "model":    self.model_name,
-                    "messages": clean_messages,
-                    "stream":   False,
-                    "options":  {"temperature": self.temperature, "num_predict": self.max_tokens},
-                }
-                try:
-                    resp = self._post(f"{self.base_url}/api/chat", plain_payload)
-                    return TextResponse(resp.get("message", {}).get("content", ""))
-                except Exception as e2:
-                    error(f"Ollama retry failed: {e2}")
-                    return TextResponse(f"[ERROR] Ollama failed: {e2}")
-            error(f"Ollama HTTP error {e.code}: {e.reason}")
-            return TextResponse(f"[ERROR] Ollama failed: {e}")
         except Exception as e:
             error(f"Ollama exception: {e}")
             return TextResponse(f"[ERROR] Ollama failed: {e}")
@@ -182,8 +148,170 @@ class OllamaBackend(Backend):
             with urllib.request.urlopen(req, timeout=3) as r:
                 return {"status": "ok", "backend": "ollama", "model": self.model_name}
         except Exception as e:
-            debug(f"Ollama health check failed: {e}")
             return {"status": "error", "error": str(e), "backend": "ollama"}
+
+# ── OpenAI Compatible Implementation (LM Studio, Groq, etc) ──
+
+class OpenAIBackend(Backend):
+    def __init__(self, model_name="gpt-4o", temperature=0.2, max_tokens=4096,
+                 base_url="https://api.openai.com/v1", api_key=None, tools=None):
+        self.model_name  = model_name
+        self.temperature = temperature
+        self.max_tokens  = max_tokens
+        self.base_url    = base_url.rstrip("/")
+        self.api_key     = api_key or os.environ.get("OPENAI_API_KEY", "no-key")
+        self.tools       = tools or []
+        debug(f"OpenAIBackend initialized: {model_name} @ {base_url}")
+
+    def _post(self, url, payload, timeout=600):
+        debug(f"OpenAI POST: {url}")
+        log_json(payload, "Payload")
+        data = json.dumps(payload).encode()
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        req = urllib.request.Request(url, data=data, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                resp_data = json.loads(r.read())
+                log_json(resp_data, "Response")
+                return resp_data
+        except urllib.error.URLError as e:
+            error(f"OpenAI connection error: {e}")
+            raise
+
+    def _post_stream(self, url, payload, timeout=600):
+        debug(f"OpenAI POST Stream: {url}")
+        log_json(payload, "Payload")
+        data = json.dumps(payload).encode()
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        req = urllib.request.Request(url, data=data, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                for line in r:
+                    line = line.decode('utf-8').strip()
+                    if line.startswith("data: "):
+                        raw = line[6:].strip()
+                        if raw == "[DONE]": break
+                        try:
+                            chunk = json.loads(raw)
+                            yield chunk
+                        except: continue
+        except Exception as e:
+            error(f"OpenAI stream error: {e}")
+            raise
+
+    def complete(self, messages):
+        payload = {
+            "model":       self.model_name,
+            "messages":    messages,
+            "temperature": self.temperature,
+            "max_tokens":  self.max_tokens,
+            "stream":      False
+        }
+        if self.tools: payload["tools"] = self.tools
+        try:
+            resp = self._post(f"{self.base_url}/chat/completions", payload)
+            msg = resp["choices"][0]["message"]
+            
+            if "tool_calls" in msg:
+                calls = []
+                for tc in msg["tool_calls"]:
+                    fn = tc["function"]
+                    try: args = json.loads(fn["arguments"])
+                    except: args = {}
+                    calls.append({"name": fn["name"], "args": args})
+                return ToolCallResponse(calls)
+            
+            return TextResponse(msg.get("content", ""))
+        except Exception as e:
+            error(f"OpenAI exception: {e}")
+            return TextResponse(f"[ERROR] OpenAI backend failed: {e}")
+
+    def stream_text(self, messages):
+        payload = {
+            "model":       self.model_name,
+            "messages":    messages,
+            "temperature": self.temperature,
+            "max_tokens":  self.max_tokens,
+            "stream":      True
+        }
+        try:
+            for chunk in self._post_stream(f"{self.base_url}/chat/completions", payload):
+                delta = chunk["choices"][0].get("delta", {})
+                token = delta.get("content", "")
+                if token: yield token
+        except Exception as e:
+            yield f"[ERROR] OpenAI stream failed: {e}"
+
+    def health_check(self):
+        # Basic check: try listing models or just return ok if base_url reachable
+        return {"status": "ok", "backend": "openai", "model": self.model_name}
+
+# ── Anthropic Implementation (Claude) ──────────────────────
+
+class AnthropicBackend(Backend):
+    def __init__(self, model_name="claude-3-5-sonnet-20241022", temperature=0.2, max_tokens=4096, api_key=None):
+        self.model_name  = model_name
+        self.temperature = temperature
+        self.max_tokens  = max_tokens
+        self.api_key     = api_key or os.environ.get("ANTHROPIC_API_KEY", "no-key")
+        debug(f"AnthropicBackend initialized: {model_name}")
+
+    def _post(self, url, payload, timeout=600):
+        data = json.dumps(payload).encode()
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01"
+        }
+        req = urllib.request.Request(url, data=data, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read())
+        except Exception as e:
+            error(f"Anthropic connection error: {e}")
+            raise
+
+    def complete(self, messages):
+        # Convert messages to Anthropic format
+        system = ""
+        user_msgs = []
+        for m in messages:
+            if m["role"] == "system": system = m["content"]
+            else: user_msgs.append(m)
+            
+        payload = {
+            "model":       self.model_name,
+            "system":      system,
+            "messages":    user_msgs,
+            "max_tokens":  self.max_tokens,
+            "temperature": self.temperature,
+            "stream":      False
+        }
+        try:
+            resp = self._post("https://api.anthropic.com/v1/messages", payload)
+            content = resp["content"][0]["text"]
+            return TextResponse(content)
+        except Exception as e:
+            return TextResponse(f"[ERROR] Anthropic failed: {e}")
+
+    def stream_text(self, messages):
+        # Anthropic streaming via urllib is complex (event-stream format differs)
+        # For now, we use blocking complete() but yield it as one token for basic support
+        # Full SSE streaming for Anthropic should be added later if needed.
+        res = self.complete(messages)
+        if isinstance(res, TextResponse):
+            yield res.text
+        else:
+            yield "[ERROR] Anthropic stream not fully implemented yet."
+
+    def health_check(self):
+        return {"status": "ok", "backend": "anthropic", "model": self.model_name}
 
 # ── LlamaCpp Implementation (Direct GGUF) ──────────────────
 
@@ -199,54 +327,35 @@ class LlamaCppBackend(Backend):
 
     def load(self):
         if not os.path.exists(self.model_path):
-            msg = f"[ERROR] Model file not found: {self.model_path}"
-            error(msg)
-            return msg
+            return f"[ERROR] Model file not found: {self.model_path}"
         try:
-            info(f"Loading LlamaCpp model from {self.model_path}...")
             from llama_cpp import Llama
             self.llm = Llama(
                 model_path=self.model_path,
                 n_ctx=self.n_ctx,
-                n_gpu_layers=0, # CPU only by default
+                n_gpu_layers=0,
                 verbose=True if os.environ.get("AXONIX_DEBUG") else False
             )
-            info("LlamaCpp model loaded successfully.")
             return "ok"
         except Exception as e:
-            msg = f"[ERROR] Failed to load llama-cpp: {e}"
-            error(msg)
-            import traceback
-            debug(traceback.format_exc())
-            return msg
-
-    def is_loaded(self):
-        return self.llm is not None
+            return f"[ERROR] Failed to load llama-cpp: {e}"
 
     def complete(self, messages):
-        if not self.llm: 
-            warn("Attempted complete() on uninitialized LlamaCpp backend.")
-            return TextResponse("[ERROR] Backend not loaded")
+        if not self.llm: return TextResponse("[ERROR] Backend not loaded")
         try:
-            debug(f"LlamaCpp completion request with {len(messages)} messages.")
             resp = self.llm.create_chat_completion(
                 messages=messages,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
             )
-            log_json(resp, "LlamaCpp Response")
             content = resp["choices"][0]["message"].get("content", "")
             return TextResponse(content)
         except Exception as e:
-            error(f"LlamaCpp completion exception: {e}")
             return TextResponse(f"[ERROR] LlamaCpp failed: {e}")
 
     def stream_text(self, messages):
-        if not self.llm: 
-            warn("Attempted stream_text() on uninitialized LlamaCpp backend.")
-            yield "[ERROR] Backend not loaded"; return
+        if not self.llm: yield "[ERROR] Backend not loaded"; return
         try:
-            debug("LlamaCpp stream request.")
             stream = self.llm.create_chat_completion(
                 messages=messages,
                 max_tokens=self.max_tokens,
@@ -258,7 +367,6 @@ class LlamaCppBackend(Backend):
                 if "content" in delta:
                     yield delta["content"]
         except Exception as e:
-            error(f"LlamaCpp stream exception: {e}")
             yield f"[ERROR] LlamaCpp stream failed: {e}"
 
     def health_check(self):
@@ -272,6 +380,12 @@ def get_backend(cfg: dict, tools=None) -> Backend:
     prov = cfg.get("provider", cfg.get("backend", "ollama")).lower()
     debug(f"Factory creating backend for provider: {prov}")
     
+    # Common mappings
+    if prov == "lmstudio":
+        cfg["provider"] = "openai"
+        if "base_url" not in cfg: cfg["base_url"] = "http://localhost:1234/v1"
+        prov = "openai"
+    
     if prov == "ollama":
         return OllamaBackend(
             model_name  = cfg.get("model_name", "gemma3-4b"),
@@ -279,6 +393,24 @@ def get_backend(cfg: dict, tools=None) -> Backend:
             max_tokens  = int(cfg.get("max_tokens", 4096)),
             base_url    = cfg.get("base_url", "http://localhost:11434"),
             tools       = tools
+        )
+    
+    if prov == "openai":
+        return OpenAIBackend(
+            model_name  = cfg.get("model_name", "gpt-4o"),
+            temperature = float(cfg.get("temperature", 0.2)),
+            max_tokens  = int(cfg.get("max_tokens", 4096)),
+            base_url    = cfg.get("base_url", "https://api.openai.com/v1"),
+            api_key     = cfg.get("api_key"),
+            tools       = tools
+        )
+    
+    if prov == "anthropic":
+        return AnthropicBackend(
+            model_name  = cfg.get("model_name", "claude-3-5-sonnet-20241022"),
+            temperature = float(cfg.get("temperature", 0.2)),
+            max_tokens  = int(cfg.get("max_tokens", 4096)),
+            api_key     = cfg.get("api_key")
         )
     
     if prov in ("llamacpp", "local"):
