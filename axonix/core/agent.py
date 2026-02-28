@@ -54,6 +54,7 @@ web_search(query)                       — search web via DuckDuckGo
 code_lint(path)                         — lint Python with flake8
 code_format(path)                       — format Python with black
 code_tree(path=".")                     — show file tree
+code_analyze(path=".")                  — architectural overview of Python code
 memory_save(key, value)                 — save to persistent memory
 memory_get(key)                         — get from memory
 memory_list()                           — list all memory keys
@@ -114,6 +115,7 @@ class Agent:
             "code_lint":    self.code_tools.lint,
             "code_format":  self.code_tools.format_code,
             "code_tree":    self.code_tools.tree,
+            "code_analyze": self.code_tools.analyze,
             "memory_save":  self.memory.save,
             "memory_get":   self.memory.get,
             "memory_list":  self.memory.list_keys,
@@ -238,15 +240,19 @@ class Agent:
         self.messages.append({"role": "assistant", "content": full})
         self.history.append("assistant", full, mode="chat")
 
+    def _get_system_prompt(self):
+        mem_data = self.memory.all()
+        mem_str = ""
+        if mem_data:
+            mem_str = "\n\n━━━━━━━━━━ PERSISTENT MEMORY ━━━━━━━━━━\n"
+            for k, v in mem_data.items():
+                mem_str += f"{k}: {v}\n"
+        
+        return SYSTEM_PROMPT + mem_str
+
     def run(self, task: str):
         """
         Streaming agent loop with real-time tag parsing.
-        
-        Flow per step:
-          1. Stream tokens from LLM
-          2. StreamParser watches for <thought>, <action>, <ENDOFOP> mid-stream
-          3. On <action>: pause stream, execute tool, inject result, resume
-          4. On <ENDOFOP>: stop loop, return summary
         """
         from axonix.core.stream_parser import StreamParser
 
@@ -254,13 +260,17 @@ class Agent:
         self._finished     = False
         self._final_result = None
 
+        # Inject current memory into the system prompt
+        current_system_prompt = self._get_system_prompt()
+
         messages = [
-            {"role": "system",  "content": SYSTEM_PROMPT},
+            {"role": "system",  "content": current_system_prompt},
             {"role": "user",    "content": task},
         ]
         self.history.append("user", task, mode="agent")
 
         max_steps = int(self.config.get("max_steps", 30))
+        action_history = [] # Track (tool, args) to detect loops
 
         for step in range(1, max_steps + 1):
             debug(f"--- Step {step}/{max_steps} ---")
@@ -339,6 +349,22 @@ class Agent:
             # ── ACTION — execute tool and continue ────────────────────
             if action_pending:
                 tool_name, tool_args = action_pending[0]
+
+                # Loop Detection
+                action_sig = (tool_name, json.dumps(tool_args, sort_keys=True))
+                action_history.append(action_sig)
+                
+                repeat_count = action_history.count(action_sig)
+                if repeat_count >= 3:
+                    warn(f"Repetitive action detected: {tool_name}. Count: {repeat_count}")
+                    messages.append({
+                        "role": "user",
+                        "content": f"You have already called {tool_name} with these arguments {repeat_count} times. If the result wasn't what you expected, try a different approach or tool. If you are stuck, think about what's missing."
+                    })
+                
+                if repeat_count >= 5:
+                    error("Max repetitions reached. Aborting to prevent loop.")
+                    return f"[ERROR] Agent got stuck in a loop calling {tool_name}."
 
                 if self.on_tool_call:
                     self.on_tool_call(tool_name, tool_args)

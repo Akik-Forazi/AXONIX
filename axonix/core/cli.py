@@ -175,12 +175,12 @@ def step_line(step: int, total: int, label: str = ""):
 
 # ── Banner ────────────────────────────────────────────────
 BANNER_ART = r"""
-  █████╗ ██╗  ██╗ ██████╗ ███╗   ██╗ ██╗ ██╗  ██╗
- ██╔══██╗╚██╗██╔╝██╔═══██╗████╗  ██║ ██║ ╚██╗██╔╝
- ███████║ ╚███╔╝ ██║   ██║██╔██╗ ██║ ██║  ╚███╔╝ 
- ██╔══██║ ██╔██╗ ██║   ██║██║╚██╗██║ ██║  ██╔██╗ 
- ██║  ██║██╔╝ ██╗╚██████╔╝██║ ╚████║ ██║ ██╔╝ ██╗
- ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═╝ ╚═╝  ╚═╝
+  █████╗ ██╗  ██╗ ██████╗ ███╗   ██╗ ██╗ ██╗  ██╗      ███████╗ ███████╗ ██████╗  ██████╗ 
+ ██╔══██╗╚██╗██╔╝██╔═══██╗████╗  ██║ ██║ ╚██╗██╔╝      ╚══███╔╝ ██╔════╝ ██╔══██╗ ██╔═══██╗
+ ███████║ ╚███╔╝ ██║   ██║██╔██╗ ██║ ██║  ╚███╔╝         ███╔╝  █████╗   ██████╔╝ ██║   ██║
+ ██╔══██║ ██╔██╗ ██║   ██║██║╚██╗██║ ██║  ██╔██╗        ███╔╝   ██╔══╝   ██╔══██╗ ██║   ██║
+ ██║  ██║██╔╝ ██╗╚██████╔╝██║ ╚████║ ██║ ██╔╝ ██╗      ███╔══╝  ███████╗ ██║  ██║ ╚██████╔╝
+ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═╝ ╚═╝  ╚═╝      ╚══════╝ ╚══════╝ ╚═╝  ╚═╝  ╚═════╝ 
 """
 
 def print_banner(version="1.0.0", model="local", backend="direct", model_path=""):
@@ -195,10 +195,12 @@ def print_banner(version="1.0.0", model="local", backend="direct", model_path=""
             print(art_colored)
         else:
             print(BANNER_ART)
-        print(f"  {C.CYAN}by Fraziym Tech & AI{C.RESET}  {C.DGRAY}*{C.RESET}  {C.WHITE}AKIK FARAJI{C.RESET}")
+        print(f"  {C.BOLD}{C.WHITE}AXONIX-ZERO{C.RESET} {C.DGRAY}— the local Agentic super AI friend of yours.{C.RESET}")
+        print(f"  {C.CYAN}by Fraziym Tech & AI{C.RESET}  {C.DGRAY}·{C.RESET}  {C.WHITE}© AKIK FARAJI{C.RESET}")
     except UnicodeEncodeError:
-        print("  === AXONIX ===")
-        print("  by Fraziym Tech & AI  *  AKIK FARAJI")
+        print("  === AXONIX-ZERO ===")
+        print("  the local Agentic super AI friend of yours.")
+        print("  by Fraziym Tech & AI  ·  © AKIK FARAJI")
     print()
 
     import os
@@ -227,7 +229,7 @@ def print_help():
         ("config",         "show current configuration"),
         ("tree",           "show workspace file tree"),
         ("!<cmd>",         "run a shell command directly"),
-        ("exit",           "quit axonix"),
+        ("exit",           "quit AXONIX-ZERO"),
     ]
     for cmd, desc in cmds:
         if not cmd:

@@ -142,6 +142,12 @@ class StreamParser:
         content = re.sub(r'\n?```$', '', content)
         content = content.strip()
 
+        # Sanitize common JSON errors
+        # 1. Remove trailing commas in objects/lists
+        content = re.sub(r',(\s*[}\]])', r'\1', content)
+        # 2. Fix unquoted keys (simple case)
+        # content = re.sub(r'([{,]\s*)(\w+):', r'\1"\2":', content) # Too risky
+
         try:
             obj = json.loads(content)
             tool = obj.get("tool") or obj.get("name") or obj.get("function")

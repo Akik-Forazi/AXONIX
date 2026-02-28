@@ -46,29 +46,42 @@ class CodeTools:
 
     def tree(self, path: str = ".", max_depth: int = 4) -> str:
         """Generate a tree view of a directory."""
+        # ... (rest of tree code) ...
+
+    def analyze(self, path: str = ".") -> str:
+        """Scan Python files and provide an architectural summary (classes/defs)."""
         full = self._resolve(path)
-        lines = [f"{full}/"]
+        summary = [f"[ANALYSIS: {full}]"]
+        
+        files_to_scan = []
+        if os.path.isfile(full):
+            if full.endswith(".py"):
+                files_to_scan.append(full)
+        else:
+            for root, _, files in os.walk(full):
+                if any(x in root for x in [".git", "__pycache__", ".axonix"]):
+                    continue
+                for f in files:
+                    if f.endswith(".py"):
+                        files_to_scan.append(os.path.join(root, f))
+        
+        if not files_to_scan:
+            return f"{summary[0]} No Python files found."
 
-        def _walk(directory: str, prefix: str, depth: int):
-            if depth > max_depth:
-                return
+        import re
+        for fpath in files_to_scan:
+            rel = os.path.relpath(fpath, self.workspace)
+            summary.append(f"\n📄 {rel}:")
             try:
-                items = sorted(os.listdir(directory))
-            except PermissionError:
-                return
+                with open(fpath, "r", encoding="utf-8", errors="replace") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("class ") or line.startswith("def "):
+                            # Capture name and signature start
+                            m = re.match(r"(class|def)\s+(\w+)", line)
+                            if m:
+                                summary.append(f"  {m.group(1)} {m.group(2)}")
+            except Exception as e:
+                summary.append(f"  [ERROR] {e}")
 
-            # Filter common noise
-            ignore = {".git", "__pycache__", "node_modules", ".venv", "venv", ".axonix_memory.json"}
-            items = [i for i in items if i not in ignore]
-
-            for i, item in enumerate(items):
-                is_last = i == len(items) - 1
-                connector = "└── " if is_last else "├── "
-                full_path = os.path.join(directory, item)
-                lines.append(f"{prefix}{connector}{item}")
-                if os.path.isdir(full_path):
-                    extension = "    " if is_last else "│   "
-                    _walk(full_path, prefix + extension, depth + 1)
-
-        _walk(full, "", 1)
-        return "\n".join(lines)
+        return "\n".join(summary)

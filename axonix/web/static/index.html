@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Axonix</title>
+<title>AXONIX-ZERO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -451,10 +451,11 @@ code { font-family:var(--mono); }
       <svg viewBox="0 0 12 12"><path d="M1 3h10M1 6h10M1 9h10"/></svg>
     </button>
     <div class="brand">
-      <div class="bmark">AX</div>
+      <div class="bmark">Z0</div>
       <div style="display: flex; flex-direction: column;">
-        <div class="bname">Axonix</div>
-        <div class="bsub">by Fraziym Tech & AI | © AKIK FARAJI</div>
+        <div class="bname">AXONIX-ZERO</div>
+        <div class="bsub">the local Agentic super AI friend of yours.</div>
+        <div class="bsub" style="font-size: 8px; margin-top: 1px;">by Fraziym Tech & AI | © AKIK FARAJI</div>
       </div>
     </div>
     <div class="mpill">
@@ -546,9 +547,10 @@ code { font-family:var(--mono); }
 <main id="main">
   <div id="feed">
     <div class="wlc" id="welcome">
-      <div class="wico">AX</div>
-      <div class="wh">Axonix <em>Agent</em></div>
-      <p class="wp" style="font-size: 12px; color: var(--t3); margin-top: -16px;">by Fraziym Tech & AI | © AKIK FARAJI</p>
+      <div class="wico">Z0</div>
+      <div class="wh">AXONIX-ZERO <em>Agent</em></div>
+      <p class="wp" style="font-size: 13px; font-weight: 500; color: var(--blue); margin-top: -12px;">the local Agentic super AI friend of yours.</p>
+      <p class="wp" style="font-size: 11px; color: var(--t3); margin-top: -10px;">by Fraziym Tech & AI | © AKIK FARAJI</p>
       <p class="wp">Fully local AI super-agent. Use <strong>Agent</strong> mode for autonomous task execution with tools.</p>
       <div class="chips">
         <div class="chip" onclick="chip(this)">Build a FastAPI REST API</div>
@@ -564,7 +566,7 @@ code { font-family:var(--mono); }
   <div class="inpw">
     <div class="inpbox">
       <div class="inptop">
-        <textarea id="inp" placeholder="Message Axonix…" rows="1"
+        <textarea id="inp" placeholder="Message AXONIX-ZERO…" rows="1"
           onkeydown="onKey(event)" oninput="grow(this)"></textarea>
         <button class="inpsend" id="sendBtn" onclick="send()">
           <svg viewBox="0 0 12 12"><path d="M11 6L1 1l2.5 5L1 11l10-5z"/></svg>
@@ -970,7 +972,7 @@ function appendUser(text) {
 
 function appendShell(id) {
   const el=mk('div','msg'); el.id=id;
-  el.innerHTML=`<div class="mh"><div class="av av-a">AX</div><span class="mwho">Axonix</span><span class="mts">${ts()}</span></div><div class="sr"></div><div class="tcl"></div><div class="mb"><span class="cr"></span></div>`;
+  el.innerHTML=`<div class="mh"><div class="av av-a">Z0</div><span class="mwho">AXONIX-ZERO</span><span class="mts">${ts()}</span></div><div class="sr"></div><div class="tcl"></div><div class="mb"><span class="cr"></span></div>`;
   g('feed').appendChild(el); scrollFeed(); return el;
 }
 
@@ -1069,8 +1071,8 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 async function newChat() {
   await api('/api/reset',{method:'POST',body:{}});
   g('feed').innerHTML=`<div class="wlc" id="welcome">
-    <div class="wico">AX</div>
-    <div class="wh">Axonix <em>Agent</em></div>
+    <div class="wico">Z0</div>
+    <div class="wh">AXONIX-ZERO <em>Agent</em></div>
     <p class="wp">Conversation cleared.</p>
   </div>`;
   turns=0; setText('sbTurns','0'); toast('New conversation');

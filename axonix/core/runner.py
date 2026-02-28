@@ -166,7 +166,7 @@ def main():
     pos  = args.positional
 
     if args.version:
-        print("  axonix v1.0.0")
+        print("  AXONIX-ZERO v1.0.0")
         return
 
     if args.help:
