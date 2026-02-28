@@ -61,7 +61,7 @@ class OllamaBackend(Backend):
         self.tools       = tools or []
         debug(f"OllamaBackend initialized: {model_name} @ {base_url}")
 
-    def _post(self, url, payload, timeout=300):
+    def _post(self, url, payload, timeout=600):
         debug(f"Ollama POST: {url}")
         log_json(payload, "Payload")
         data = json.dumps(payload).encode()
@@ -75,7 +75,7 @@ class OllamaBackend(Backend):
             error(f"Ollama connection error: {e}")
             raise
 
-    def _post_stream(self, url, payload, timeout=300):
+    def _post_stream(self, url, payload, timeout=600):
         debug(f"Ollama POST Stream: {url}")
         log_json(payload, "Payload")
         data = json.dumps(payload).encode()
